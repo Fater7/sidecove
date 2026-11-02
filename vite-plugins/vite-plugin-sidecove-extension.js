@@ -2,7 +2,7 @@ import { resolve } from 'path';
 import fs from 'fs-extra';
 
 /**
- * Get shared input configuration for Arcify Chrome Extension
+ * Get shared input configuration for Sidecove
  */
 function getExtensionInputs() {
   return {
@@ -21,7 +21,7 @@ function getExtensionInputs() {
 }
 
 /**
- * Get shared output configuration for Arcify Chrome Extension
+ * Get shared output configuration for Sidecove
  */
 function getExtensionOutput(isDev = false) {
   return {
@@ -50,7 +50,7 @@ function getExtensionOutput(isDev = false) {
 }
 
 /**
- * Get Arcify extension build plugins
+ * Get Sidecove extension build plugins
  */
 function getExtensionPlugins(isDev = false) {
   const outDir = isDev ? 'dist-dev' : 'dist';
@@ -58,7 +58,7 @@ function getExtensionPlugins(isDev = false) {
   return [
     // Main extension build plugin
     {
-      name: 'arcify-extension-main',
+      name: 'sidecove-extension-main',
       writeBundle: async () => {
         // Copy static files
         await fs.copy('manifest.json', `${outDir}/manifest.json`);
@@ -77,6 +77,9 @@ function getExtensionPlugins(isDev = false) {
         if (await fs.pathExists('README.md')) {
           await fs.copy('README.md', `${outDir}/README.md`);
         }
+        if (await fs.pathExists('THIRD_PARTY_NOTICES.md')) {
+          await fs.copy('THIRD_PARTY_NOTICES.md', `${outDir}/THIRD_PARTY_NOTICES.md`);
+        }
 
         console.log(`✅ Main extension files built to ${outDir}/`);
         console.log(`🎉 Sidecove extension build complete!`);
@@ -86,9 +89,9 @@ function getExtensionPlugins(isDev = false) {
 }
 
 /**
- * Create complete Vite configuration for Arcify Chrome Extension
+ * Create complete Vite configuration for Sidecove
  */
-export function createArcifyConfig(options = {}) {
+export function createSidecoveConfig(options = {}) {
   const { isDev = false } = options;
   const outDir = isDev ? 'dist-dev' : 'dist';
 
@@ -130,8 +133,8 @@ export function createArcifyConfig(options = {}) {
 
 /**
  * Legacy function for backward compatibility
- * @deprecated Use createArcifyConfig instead
+ * @deprecated Use createSidecoveConfig instead
  */
-export function arcifyExtensionPlugin(options = {}) {
+export function sidecoveExtensionPlugin(options = {}) {
   return getExtensionPlugins(options.isDev);
 }

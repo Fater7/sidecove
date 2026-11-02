@@ -63,24 +63,24 @@ h3 {
     transition: background-color 0.3s ease;
 }
 
+/* Favorites grid: tiles fill a row while there are few, then wrap at a fixed size,
+   so a lone tile on a new row no longer stretches across it (upstream issue #42). */
 .pinned-favicons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    /* padding: 8px; */
-    border-radius: 12px;
-    /* background-color: rgba(255, 255, 255, 0.1); */
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
     gap: 8px;
-    justify-content: space-between;
+    border-radius: 12px;
+}
+
+.pinned-favicons > .pinned-placeholder-container {
+    grid-column: 1 / -1;
 }
 
 .pinned-favicon {
-    width: 32px;
-    height: 48px;
-    flex: 1 1 24%;
-    border-radius: 8px;
+    height: 44px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -94,8 +94,11 @@ h3 {
 }
 
 .pinned-favicon:hover {
-    /* transform: scale(1.1); */
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.pinned-favicon:active {
+    transform: scale(0.97);
 }
 
 .pinned-favicon img {
@@ -107,20 +110,23 @@ h3 {
 .context-menu {
     display: block;
     position: fixed;
+    padding: 4px;
     background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06);
     z-index: 1000;
-    min-width: 150px;
+    min-width: 170px;
+    animation: sidecove-pop-in 0.12s ease-out;
+    transform-origin: top left;
 }
 
 .context-menu-item {
-    padding: 8px 12px;
+    padding: 6px 10px;
     cursor: pointer;
-    background-color: #fff;
-    border-radius: 8px;
-    transition: background-color 0.3s ease;
+    background-color: transparent;
+    border-radius: 6px;
+    transition: background-color 0.1s ease;
     color: #333;
 }
 
@@ -131,7 +137,7 @@ h3 {
 .context-menu-separator {
     height: 1px;
     background-color: var(--sidebar-border-color, #eee);
-    margin: 4px 0;
+    margin: 4px 6px;
 }
 
 .context-menu-item.with-submenu {
@@ -152,7 +158,7 @@ h3 {
     display: none;
     position: absolute;
     left: 100%;
-    top: -5px;
+    top: -4px;
     /* Adjust as needed for vertical alignment */
     z-index: 101;
     /* Ensure submenu appears above the parent menu */
@@ -287,10 +293,17 @@ h3 {
     display: none;
 }
 
+/* A space switch lands at once: the background and every row take the new space's colours
+   in the same frame. Fading them separately showed parts of the panel as highlighted
+   patches in the old or new colour. */
+.sidebar-container.switching-space,
+.sidebar-container.switching-space *,
+.sidebar-container.switching-space *::before,
+.sidebar-container.switching-space *::after {
+    transition: none !important;
+}
+
 .space {
-    /* background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 16px; */
     display: flex;
     flex-direction: column;
     overflow-y: hidden;
@@ -409,13 +422,15 @@ h3 {
     position: absolute;
     top: 100%;
     right: 0;
-    background-color: #ECEFF1;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 4px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.06);
     display: none;
     flex-direction: column;
-    min-width: 150px;
+    min-width: 170px;
     z-index: 1000;
+    animation: sidecove-pop-in 0.12s ease-out;
 }
 
 .space-options-container:hover .space-options-dropdown,
@@ -426,11 +441,14 @@ h3 {
 .space-options-dropdown button {
     background: none;
     border: none;
-    padding: 8px 16px;
+    border-radius: 6px;
+    padding: 6px 10px;
     text-align: left;
     cursor: pointer;
     color: #333;
-    font-size: 14px;
+    font: inherit;
+    font-size: 13px;
+    transition: background-color 0.1s ease;
 }
 
 .space-options-dropdown button:hover {
@@ -460,6 +478,11 @@ h3 {
     padding: 8px;
     background: #fff;
     border-radius: 8px;
+}
+
+/* In the space menu the swatches sit on the menu itself, light or dark. */
+.space-options-dropdown .color-picker-grid {
+    background: none;
 }
 
 .create-space-picker {
@@ -546,9 +569,13 @@ h3 {
     margin-right: 16px;
 }
 
-.folder.collapsed:hover {
-    /* background-color: rgba(255, 255, 255, 0.2); */
-    background: var(--space-bg-color-dark, rgba(255, 255, 255, 0.1));
+.folder-header {
+    border-radius: 10px;
+    transition: background-color 0.12s ease;
+}
+
+.folder-header:hover {
+    background: color-mix(in srgb, var(--space-bg-color, #ccc) 62%, white);
 }
 
 .folder-title {
@@ -628,7 +655,8 @@ h3 {
     transition: border-top-color 0.2s;
 }
 
-.folder-header:hover .folder-toggle::before {
+.folder-header:hover .folder-toggle::before,
+.folder-toggle:focus-visible::before {
     border-top: 6px solid #1010107d;
 }
 
@@ -700,7 +728,8 @@ h3 {
 }
 
 .pinned-tabs {
-    transition: all 0.2s ease;
+    /* Visible at once when expanding, so New Folder can focus its name field straight away. */
+    transition: all 0.2s ease, visibility 0s;
     /* overflow: hidden;
     max-height: 500px;  */
     opacity: 1;
@@ -712,6 +741,10 @@ h3 {
     margin-bottom: 0;
     padding-top: 0;
     padding-bottom: 0;
+    /* Collapsed favorites stay out of the way: no clicks, hover or keyboard focus. */
+    overflow: hidden;
+    visibility: hidden;
+    transition: all 0.2s ease, visibility 0s 0.2s;
 }
 
 .temp-header {
@@ -782,28 +815,41 @@ h3 {
     font-size: 18px;
 }
 
+.new-tab-btn:active {
+    transform: scale(0.99);
+}
+
+/* As in Arc: New Tab is a plain row, a grey plus where a tab's icon sits and grey text,
+   with the same height, padding and hover as a tab row. */
 .new-tab-btn {
-    background-color: rgba(255, 255, 255, 0.2);
+    background: none;
     border: none;
-    color: #333;
-    padding: 12px;
-    border-radius: 12px;
+    color: rgba(51, 51, 51, 0.9);
+    min-height: 36px;
+    padding: 4px 8px 4px 12px;
+    border-radius: 10px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
-    font-size: 16px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 400;
+    text-align: left;
     width: 100%;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
 }
 
 .new-tab-btn:hover {
-    background-color: rgba(255, 255, 255, 0.3);
+    color: #333;
 }
 
 .new-tab-btn span {
-    font-size: 20px;
+    width: 16px;
+    font-size: 18px;
+    line-height: 1;
+    text-align: center;
 }
 
 /* Toast notification for URL copy success */
@@ -866,6 +912,12 @@ h3 {
     white-space: nowrap;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
+    animation: sidecove-toast-in 0.2s ease-out;
+}
+
+@keyframes sidecove-toast-in {
+    from { opacity: 0; transform: translate(-50%, 6px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .undo-toast-button {
@@ -901,7 +953,18 @@ h3 {
     opacity: 1;
     visibility: visible;
     transition: opacity 0.2s ease, visibility 0.2s ease;
-    mask-image: linear-gradient(to right, rgb(0, 0, 0), rgb(0, 0, 0), rgb(0, 0, 0), rgb(0, 0, 0), rgba(0, 0, 0, 0));
+}
+
+.space-switcher.more-after {
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent calc(100% - 4px));
+}
+
+.space-switcher.more-before {
+    mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent calc(100% - 4px));
+}
+
+.space-switcher.more-before.more-after {
+    mask-image: linear-gradient(to right, transparent 4px, #000 32px, #000 calc(100% - 32px), transparent calc(100% - 4px));
 }
 
 .space-switcher::-webkit-scrollbar {
@@ -941,6 +1004,7 @@ h3 {
 }
 
 .space-chip-icon {
+    display: inline-flex;
     font-size: 15px;
     line-height: 1;
 }
@@ -950,21 +1014,60 @@ h3 {
     text-overflow: ellipsis;
 }
 
-/* Compact chips: icons (or initials) only, once the names no longer fit. */
-.space-switcher.compact button {
-    width: 32px;
-    min-width: 32px;
+/* As in Arc: a row of icons, or a dot for a space without one, spread across the bar. The
+   active space is full strength and the name shows on hover. */
+.space-switcher.icons-only {
+    gap: 2px;
+    justify-content: space-between;
+}
+
+.space-switcher.icons-only button {
+    color: color-mix(in srgb, var(--space-bg-color-dark, #888) 45%, #1f2933);
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
     padding: 0;
+    border-radius: 8px;
+    background-color: transparent;
+    opacity: 0.5;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
-.space-switcher.compact .space-chip-name {
-    display: none;
+.space-switcher.icons-only button:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+    opacity: 0.85;
 }
 
-.space-switcher.compact button:not(.has-icon)::before {
-    content: attr(data-initial);
-    font-size: 13px;
-    font-weight: 600;
+.space-switcher.icons-only button.active {
+    background-color: transparent;
+    box-shadow: none;
+    opacity: 1;
+}
+
+.space-switcher.icons-only .space-chip-icon {
+    font-size: 18px;
+}
+
+.space-switcher.icons-only .space-chip-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.space-switcher.icons-only button:not(.has-icon)::before {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: currentColor;
+}
+
+.space-switcher.icons-only button.active:not(.has-icon)::before {
+    width: 11px;
+    height: 11px;
 }
 
 /* Space icon in the header: an emoji, or a faint placeholder on hover. */
@@ -1012,6 +1115,36 @@ h3 {
     height: 18px;
 }
 
+/* A monochrome symbol takes the colour of the text around it. */
+.space-symbol {
+    width: 1em;
+    height: 1em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.space-icon-results {
+    max-height: 264px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.space-icon-heading {
+    margin: 4px 4px 2px;
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.6;
+}
+
+.space-icon-empty {
+    margin: 8px 4px;
+    font-size: 12px;
+    opacity: 0.6;
+}
+
 .space-icon-picker {
     position: fixed;
     z-index: 1001;
@@ -1019,6 +1152,7 @@ h3 {
     padding: 8px;
     border-radius: 12px;
     background: #fff;
+    color: #30363d;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.06);
     display: flex;
     flex-direction: column;
@@ -1037,6 +1171,7 @@ h3 {
     border: none;
     border-radius: 8px;
     background: none;
+    color: inherit;
     font-size: 18px;
     cursor: pointer;
     transition: background-color 0.12s ease, transform 0.12s ease;
@@ -1090,32 +1225,35 @@ h3 {
 }
 
 .space-switcher button.active {
-    background-color: #ECEFF1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background-color: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .tab {
     display: flex;
     align-items: center;
-    padding: 4px 12px;
-    margin-bottom: 4px;
-    border-radius: 12px;
+    min-height: 36px;
+    padding: 4px 8px 4px 12px;
+    margin-bottom: 2px;
+    border-radius: 10px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease, opacity 0.15s ease;
     background: var(--space-bg-color, rgba(255, 255, 255, 0.1));
     position: relative;
-    /* font-weight: 600; */
 }
 
-.tab:hover {
-    background: var(--space-bg-color-dark, rgba(255, 255, 255, 0.1));
-    /* make background darker */
-    /* background-color: #bdbdbd; */
+.tab:hover,
+.new-tab-btn:hover {
+    background: color-mix(in srgb, var(--space-bg-color, #ccc) 62%, white);
+}
+
+.tab:active {
+    transform: scale(0.99);
 }
 
 .tab.active {
-    background-color: #ECEFF1;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 /* Multi-select: Cmd/Ctrl or Shift click. */
@@ -1124,12 +1262,12 @@ h3 {
 }
 
 .tab.selected {
-    background: color-mix(in srgb, var(--space-bg-color-dark, #999) 55%, white);
-    box-shadow: inset 0 0 0 1.5px var(--space-bg-color-dark, rgba(0, 0, 0, 0.25));
+    background: color-mix(in srgb, var(--space-bg-color, #ccc) 45%, white);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .tab.selected.active {
-    background-color: #ECEFF1;
+    background: #fff;
 }
 
 /* Holding a tab over a favorite makes a folder of the two. */
@@ -1351,7 +1489,9 @@ h3 {
 }
 
 .tab:hover .tab-close,
-.tab:hover .tab-remove {
+.tab:hover .tab-remove,
+.tab-close:focus-visible,
+.tab-remove:focus-visible {
     opacity: 1;
 }
 
@@ -1426,12 +1566,17 @@ h3 {
     align-items: center;
     opacity: 0;
     height: 0px;
+    /* Hidden fields must not take keyboard focus, which would scroll the panel. */
+    visibility: hidden;
     transition: all 0.2s ease;
 }
 
 .add-space-input-container.visible {
     opacity: 1;
     height: 5rem;
+    visibility: visible;
+    /* Focusable as soon as it opens; it still fades out when closed. */
+    transition: all 0.2s ease, visibility 0s;
 }
 
 #newSpaceName {
@@ -1472,10 +1617,6 @@ h3 {
 #createSpaceBtn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-}
-
-.new-tab-btn span {
-    font-size: 20px;
 }
 
 .new-tab-input {
@@ -1713,13 +1854,16 @@ h3 {
     overflow-y: auto;
     z-index: 0;
     /* Ensure it's above other elements */
-    transition: opacity 0.3s ease;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
     /* padding: 8px; */
     /* font-size: 13px; */
 }
 
 .archived-tabs-popup.visible {
     opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease, visibility 0s;
     z-index: 2;
     height: 100%;
     margin-top: 12px;
@@ -2262,8 +2406,47 @@ h3 {
         color: #ECEFF1;
     }
 
+    .space-options-dropdown {
+        background-color: #2a2a2a;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    .space-options-dropdown button {
+        color: #ECEFF1;
+    }
+
     .space-options-dropdown button:hover {
         background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .options-separator {
+        background-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .folder-icon {
+        fill: rgba(255, 255, 255, 0.8);
+    }
+
+    .folder-title {
+        color: #ECEFF1;
+    }
+
+    .tab:hover,
+    .folder-header:hover,
+    .new-tab-btn:hover {
+        background: var(--space-bg-color-dark, rgba(255, 255, 255, 0.1));
+    }
+
+    .tab.active {
+        background: #ECEFF1;
+    }
+
+    .pinned-favicon:hover {
+        background-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .space-switcher button.active {
+        background-color: #ECEFF1;
     }
 
     .folder-name {
@@ -2272,6 +2455,11 @@ h3 {
 
     .folder-toggle {
         color: rgba(255, 255, 255, 0.8);
+    }
+
+    .folder-header:hover .folder-toggle::before,
+    .folder-toggle:focus-visible::before {
+        border-top-color: rgba(255, 255, 255, 0.6);
     }
 
     .tab-placeholder {
@@ -2299,7 +2487,13 @@ h3 {
         background-color: rgba(255, 255, 255, 0.1);
     }
 
+    /* Tab titles in dark mode are already at the edge of readable, so New Tab keeps their
+       colour and stays quieter through its regular weight alone. */
     .new-tab-btn {
+        color: #ECEFF1;
+    }
+
+    .new-tab-btn:hover {
         color: #ECEFF1;
     }
 
@@ -2309,6 +2503,15 @@ h3 {
 
     .space-switcher button.active {
         color: #000000;
+    }
+
+    .space-switcher.icons-only button,
+    .space-switcher.icons-only button.active {
+        color: color-mix(in srgb, var(--space-bg-color, #888) 35%, #ECEFF1);
+    }
+
+    .space-switcher.icons-only button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
     }
 
     .tab-title-display,
@@ -2332,6 +2535,7 @@ h3 {
 
     .space-icon-picker {
         background: #2a2a2a;
+        color: #ECEFF1;
         box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
     }
 
@@ -2471,11 +2675,12 @@ h3 {
     /* Context menu dark mode */
     .context-menu {
         background-color: #2a2a2a;
-        border: 1px solid #444;
+        border: none;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
     }
 
     .context-menu-item {
-        background-color: #2a2a2a;
+        background-color: transparent;
         color: #ECEFF1;
     }
 
@@ -2537,3 +2742,13 @@ h3 {
 }
 .tab-group-import p { margin: 0 0 8px; }
 .tab-group-import button { margin-right: 8px; padding: 6px 10px; cursor: pointer; }
+
+/* Respect a reduced-motion preference for every Sidecove animation. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}

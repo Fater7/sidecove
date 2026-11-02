@@ -1,14 +1,14 @@
 import { ROOT_FOLDER_TITLE } from './constants.js';
 import { getSpaceTabs, spaceRequest } from './space-client.js';
 /**
- * Bookmark Utils - Consolidated bookmark operations for Arcify Chrome Extension
+ * Bookmark Utils - Consolidated bookmark operations for Sidecove
  * 
  * Purpose: Centralized utilities for all bookmark-related operations to eliminate code duplication
- * Key Functions: Arcify folder management, recursive traversal, URL matching, bookmark operations
+ * Key Functions: Sidecove folder management, recursive traversal, URL matching, bookmark operations
  * Architecture: Static utility class with consistent error handling and Chrome API abstraction
  * 
  * Critical Notes:
- * - Uses robust 3-method fallback approach for finding Arcify folder
+ * - Uses robust 3-method fallback approach for finding Sidecove folder
  * - Provides unified recursive traversal with flexible options
  * - Centralizes URL matching logic with normalization
  * - Ensures consistent error handling across all bookmark operations
@@ -20,18 +20,18 @@ import { Logger } from './logger.js';
 export const BookmarkUtils = {
 
     /**
-     * Robust method to find the Arcify folder in Chrome bookmarks
+     * Robust method to find the Sidecove folder in Chrome bookmarks
      * Uses 3-method fallback approach for maximum reliability across browsers/locales
-     * @returns {Promise<Object|null>} The Arcify folder object or null if not found
+     * @returns {Promise<Object|null>} The Sidecove folder object or null if not found
      */
-    async findArcifyFolder() {
+    async findSidecoveFolder() {
         try {
             // Method 1: Try the standard search first (most common case)
             const searchResults = await chrome.bookmarks.search({ title: ROOT_FOLDER_TITLE });
-            const arcifyViaSearch = searchResults?.find(result => !result.url);
-            if (arcifyViaSearch) {
-                Logger.log('[BookmarkUtils] Found Arcify folder via search:', arcifyViaSearch.id);
-                return arcifyViaSearch;
+            const folderViaSearch = searchResults?.find(result => !result.url);
+            if (folderViaSearch) {
+                Logger.log('[BookmarkUtils] Found Sidecove folder via search:', folderViaSearch.id);
+                return folderViaSearch;
             }
 
             // Method 2: Traverse the bookmark tree manually
@@ -39,10 +39,10 @@ export const BookmarkUtils = {
             for (const rootFolder of rootChildren) {
                 try {
                     const children = await chrome.bookmarks.getChildren(rootFolder.id);
-                    const arcifyFolder = children.find(child => child.title === ROOT_FOLDER_TITLE && !child.url);
-                    if (arcifyFolder) {
-                        Logger.log('[BookmarkUtils] Found Arcify folder in', rootFolder.title);
-                        return arcifyFolder;
+                    const sidecoveFolder = children.find(child => child.title === ROOT_FOLDER_TITLE && !child.url);
+                    if (sidecoveFolder) {
+                        Logger.log('[BookmarkUtils] Found Sidecove folder in', rootFolder.title);
+                        return sidecoveFolder;
                     }
                 } catch {
                     continue;
@@ -59,21 +59,21 @@ export const BookmarkUtils = {
             if (otherBookmarksFolder) {
                 try {
                     const children = await chrome.bookmarks.getChildren(otherBookmarksFolder.id);
-                    const arcifyFolder = children.find(child => child.title === ROOT_FOLDER_TITLE && !child.url);
-                    if (arcifyFolder) {
-                        Logger.log('[BookmarkUtils] Found Arcify folder in Other Bookmarks');
-                        return arcifyFolder;
+                    const sidecoveFolder = children.find(child => child.title === ROOT_FOLDER_TITLE && !child.url);
+                    if (sidecoveFolder) {
+                        Logger.log('[BookmarkUtils] Found Sidecove folder in Other Bookmarks');
+                        return sidecoveFolder;
                     }
                 } catch {
                     // Ignore error
                 }
             }
 
-            Logger.log('[BookmarkUtils] Arcify folder not found');
+            Logger.log('[BookmarkUtils] Sidecove folder not found');
             return null;
 
         } catch (error) {
-            Logger.error('[BookmarkUtils] Error in findArcifyFolder:', error);
+            Logger.error('[BookmarkUtils] Error in findSidecoveFolder:', error);
             return null;
         }
     },
@@ -132,11 +132,10 @@ export const BookmarkUtils = {
      * @param {string} bookmarkData.url - Bookmark URL
      * @param {string} bookmarkData.title - Bookmark title
      * @param {string} bookmarkData.spaceName - Space name the bookmark belongs to
-     * @param {Object} [bookmarkData.adoptTab] - Open tab to adopt instead of creating one (see findAdoptableTab)
      * @param {string} targetSpaceId - Space ID to open the tab in
      * @param {HTMLElement} replaceElement - DOM element to replace with active tab element (optional)
      * @param {Object} context - Context object with required functions and data
-     * @returns {Object} The adopted or created Chrome tab object
+     * @returns {Object} The created Chrome tab object
      */
     async openBookmarkAsTab(bookmarkData, targetSpaceId, replaceElement = null, context, isPinned) {
         const {
@@ -152,17 +151,17 @@ export const BookmarkUtils = {
 
         Logger.log('[BookmarkUtils] Opening bookmark as tab:', bookmarkData.url, targetSpaceId);
 
-        // Adopt an explicitly chosen open tab, or create the bookmark tab, then assign its target space
-        const adoptedTab = bookmarkData.adoptTab || null;
-        const newTab = adoptedTab || await chrome.tabs.create({
+        // A favorite always opens in its own new tab, even when another tab shows the same
+        // page; that tab is not linked to the favorite and stays as it is.
+        const newTab = await chrome.tabs.create({
             url: bookmarkData.url,
             active: true,
             windowId: currentWindow.id
         });
 
         // If bookmark has a custom name, set tab name override
-        if (bookmarkData.title && (adoptedTab || newTab.title !== bookmarkData.title)) {
-            await Utils.setTabNameOverride(newTab.id, adoptedTab?.url || bookmarkData.url, bookmarkData.title);
+        if (bookmarkData.title && newTab.title !== bookmarkData.title) {
+            await Utils.setTabNameOverride(newTab.id, bookmarkData.url, bookmarkData.title);
         }
 
         if (isPinned) {
@@ -199,7 +198,7 @@ export const BookmarkUtils = {
 
         // Persist the bookmark section order independently of the native tab strip.
         if (typeof persistSpaceTabOrder === 'function') {
-            await persistSpaceTabOrder(targetSpaceId, { source: 'arcify', movedTabId: newTab.id });
+            await persistSpaceTabOrder(targetSpaceId);
         }
 
         // Replace bookmark-only element with active tab element if provided
@@ -228,22 +227,6 @@ export const BookmarkUtils = {
 
         Logger.log('[BookmarkUtils] Successfully opened bookmark as tab:', newTab.id);
         return newTab;
-    },
-
-    /**
-     * Find an open tab an explicit favorite click may adopt instead of opening a duplicate.
-     * Only unbound tabs whose URL key matches qualify, preferring an exact URL;
-     * callers pass tabs already limited to the target window and space.
-     * @param {Array} tabs - Candidate Chrome tabs in the target window and space
-     * @param {Object} bindings - pinnedTabStatesById map
-     * @param {string} bookmarkUrl - The favorite's URL
-     * @param {Function} getUrlKey - Normalizes URLs for comparison
-     * @returns {Object|null} The tab to adopt, if any
-     */
-    findAdoptableTab(tabs, bindings, bookmarkUrl, getUrlKey) {
-        const targetKey = getUrlKey(bookmarkUrl);
-        const matches = tabs.filter(t => t.url && !bindings[t.id]?.bookmarkId && getUrlKey(t.url) === targetKey);
-        return matches.find(t => t.url === bookmarkUrl) || matches[0] || null;
     },
 
     /**
@@ -305,20 +288,20 @@ export const BookmarkUtils = {
     },
 
     /**
-     * Check if a bookmark is under the Arcify folder hierarchy
+     * Check if a bookmark is under the Sidecove folder hierarchy
      * @param {Object} bookmark - Bookmark object
-     * @param {string} arcifyFolderId - Arcify folder ID
-     * @returns {boolean} True if bookmark is under Arcify folder
+     * @param {string} sidecoveFolderId - Sidecove folder ID
+     * @returns {boolean} True if bookmark is under the Sidecove folder
      */
-    isUnderArcifyFolder(bookmark, arcifyFolderId) {
-        // Simple heuristic: check if the bookmark's parent path includes the Arcify folder
+    isUnderSidecoveFolder(bookmark, sidecoveFolderId) {
+        // Simple heuristic: check if the bookmark's parent path includes the Sidecove folder
         // This is a simplified check - for a more robust solution, we'd need to traverse up the parent chain
-        return bookmark.parentId && (bookmark.parentId === arcifyFolderId ||
-            bookmark.parentId.startsWith(arcifyFolderId));
+        return bookmark.parentId && (bookmark.parentId === sidecoveFolderId ||
+            bookmark.parentId.startsWith(sidecoveFolderId));
     },
 
     /**
-     * Get bookmarks data with Arcify folder exclusion
+     * Get bookmarks data with Sidecove folder exclusion
      * @param {string} query - Search query
      * @returns {Promise<Array>} Filtered bookmarks array
      */
@@ -326,23 +309,23 @@ export const BookmarkUtils = {
         try {
             const bookmarks = await chrome.bookmarks.search(query);
 
-            // Get Arcify folder to exclude its bookmarks from regular bookmark search
-            let arcifyFolderId = null;
+            // Get Sidecove folder to exclude its bookmarks from regular bookmark search
+            let sidecoveFolderId = null;
             try {
-                const arcifyFolder = await this.findArcifyFolder();
-                if (arcifyFolder) {
-                    arcifyFolderId = arcifyFolder.id;
+                const sidecoveFolder = await this.findSidecoveFolder();
+                if (sidecoveFolder) {
+                    sidecoveFolderId = sidecoveFolder.id;
                 }
             } catch (error) {
-                // Ignore error if Arcify folder doesn't exist
+                // Ignore error if Sidecove folder doesn't exist
             }
 
-            // Filter out Arcify bookmarks and keep only bookmarks with URLs
+            // Filter out Sidecove bookmarks and keep only bookmarks with URLs
             const filteredBookmarks = bookmarks.filter(bookmark => {
                 if (!bookmark.url) return false;
 
-                // Exclude bookmarks that are under Arcify folder
-                if (arcifyFolderId && this.isUnderArcifyFolder(bookmark, arcifyFolderId)) {
+                // Exclude bookmarks that are under the Sidecove folder
+                if (sidecoveFolderId && this.isUnderSidecoveFolder(bookmark, sidecoveFolderId)) {
                     return false;
                 }
 

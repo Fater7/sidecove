@@ -455,6 +455,8 @@ describe('Bookmarks and Pinned Tabs', () => {
       try {
         await sidebarPage.reload();
         await sidebarPage.waitForSelector('.space.active .folder-header');
+        // Right after a reload the stylesheet may not be applied yet.
+        await sidebarPage.waitForFunction(() => getComputedStyle(document.querySelector('.space.active .folder-header')).cursor !== '', { polling: 100, timeout: 5000 }).catch(() => {});
         const cursors = await sidebarPage.$eval('.space.active .folder-header', header => ({
           header: getComputedStyle(header).cursor,
           title: getComputedStyle(header.querySelector('.folder-title')).cursor,
@@ -694,10 +696,10 @@ describe('Bookmarks and Pinned Tabs', () => {
         // Open two test pages
         const runId = Date.now();
         const testPage1 = await browser.newPage();
-        await testPage1.goto(`https://www.example.com/?arcify-count=${runId}-1`, { waitUntil: 'domcontentloaded' });
+        await testPage1.goto(`https://www.example.com/?sidecove-count=${runId}-1`, { waitUntil: 'domcontentloaded' });
         await delay(500);
         const testPage2 = await browser.newPage();
-        await testPage2.goto(`https://www.example.com/?arcify-count=${runId}-2`, { waitUntil: 'domcontentloaded' });
+        await testPage2.goto(`https://www.example.com/?sidecove-count=${runId}-2`, { waitUntil: 'domcontentloaded' });
         await delay(1000);
 
         // Close and reopen sidebar to pick up both tabs
@@ -1146,13 +1148,13 @@ describe('Bookmarks and Pinned Tabs', () => {
         // Open multiple test pages
         const runId = Date.now();
         const testPage1 = await browser.newPage();
-        await testPage1.goto(`https://www.example.com/?arcify-multi=${runId}-1`, { waitUntil: 'domcontentloaded' });
+        await testPage1.goto(`https://www.example.com/?sidecove-multi=${runId}-1`, { waitUntil: 'domcontentloaded' });
         await delay(500);
         const testPage2 = await browser.newPage();
-        await testPage2.goto(`https://www.example.com/?arcify-multi=${runId}-2`, { waitUntil: 'domcontentloaded' });
+        await testPage2.goto(`https://www.example.com/?sidecove-multi=${runId}-2`, { waitUntil: 'domcontentloaded' });
         await delay(500);
         const testPage3 = await browser.newPage();
-        await testPage3.goto(`https://www.example.com/?arcify-multi=${runId}-3`, { waitUntil: 'domcontentloaded' });
+        await testPage3.goto(`https://www.example.com/?sidecove-multi=${runId}-3`, { waitUntil: 'domcontentloaded' });
         await delay(1000);
 
         // Close and reopen sidebar to pick up all tabs
@@ -1516,7 +1518,7 @@ describe('Bookmarks and Pinned Tabs', () => {
   describe('Undo Favorite Removal', () => {
     test('should restore a removed favorite at the same parent and index', async () => {
       try {
-        logTestStep('Testing undo after removing a favorite with "−"...');
+        logTestStep('Testing undo after removing a favorite with "×"...');
 
         const fixture = await sidebarPage.evaluate(async () => {
           const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });

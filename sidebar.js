@@ -26,7 +26,7 @@ import { canCreateFolder, canMoveFolder, createFolder } from './folder-policy.js
 import { archiveAndCloseTabs, reopenClosedTabs } from './clean-all.js';
 import { loadFolderCollapsed, saveFolderCollapsed } from './folder-state.js';
 import { FOLDER_CLOSED_ICON, FOLDER_CLOSED_DOTS_ICON, FOLDER_OPEN_ICON, SPEAKER_ICON, SPEAKER_MUTED_ICON, SPACE_ICON_PLACEHOLDER } from './icons.js';
-import { SPACE_ICON_CHOICES, normalizeSpaceIcon, spaceInitial } from './space-icons.js';
+import { normalizeSpaceIcon, spaceSymbol, searchSpaceIcons, isTypedEmoji } from './space-icons.js';
 import { audioState } from './tab-audio.js';
 import { Selection, selectionGesture } from './selection.js';
 import { searchEntries } from './tab-search.js';
@@ -125,7 +125,7 @@ function disposeEditorsInElement(element) {
 }
 
 chrome.runtime.onMessage.addListener(message => {
-    if (message.action !== 'arcifyBookmarksChanged') return;
+    if (message.action !== 'sidecoveBookmarksChanged') return;
     scheduleBookmarkRefresh();
 });
 
@@ -158,7 +158,7 @@ async function replaceBookmarkUrlWithCurrentUrl(tab, tabElement) {
 
     const newUrl = liveTab?.url || tabElement?.dataset?.url || tab?.url || null;
     if (!newUrl) {
-        console.warn('[Arcify] Replace bookmark URL failed: missing current tab URL', { tabId: tab.id });
+        console.warn('[Sidecove] Replace bookmark URL failed: missing current tab URL', { tabId: tab.id });
         return;
     }
     const newTitle = liveTab?.title || tab?.title || null;
@@ -170,7 +170,7 @@ async function replaceBookmarkUrlWithCurrentUrl(tab, tabElement) {
     const resolvedBookmarkId = bookmarkId;
 
     if (!resolvedBookmarkId) {
-        console.warn('[Arcify] Cannot replace bookmark URL: missing bookmarkId and unable to resolve.', {
+        console.warn('[Sidecove] Cannot replace bookmark URL: missing bookmarkId and unable to resolve.', {
             tabId: tab.id,
             pinnedUrl,
             dataset: tabElement?.dataset
@@ -187,7 +187,7 @@ async function replaceBookmarkUrlWithCurrentUrl(tab, tabElement) {
         if (newTitle) updatePayload.title = newTitle;
         await chrome.bookmarks.update(bookmark.id, updatePayload);
     } catch (e) {
-        console.error('[Arcify] chrome.bookmarks.update failed', { bookmarkId: resolvedBookmarkId, newUrl, error: e });
+        console.error('[Sidecove] chrome.bookmarks.update failed', { bookmarkId: resolvedBookmarkId, newUrl, error: e });
         return;
     }
 
@@ -537,9 +537,7 @@ async function activatePinnedTabByURL(bookmarkUrl, targetSpaceId, spaceName, boo
                 title: bookmark.title || 'Bookmark',
                 spaceName: spaceName,
                 pinnedUrl: bookmarkUrl,
-                bookmarkId: bookmark.id,
-                // An explicit activation adopts one unbound open tab with the same URL.
-                adoptTab: BookmarkUtils.findAdoptableTab(tabs, bindings, bookmark.url || bookmarkUrl, Utils.getPinnedUrlKey.bind(Utils))
+                bookmarkId: bookmark.id
             };
 
             // Prepare context for BookmarkUtils
@@ -562,6 +560,8 @@ async function activatePinnedTabByURL(bookmarkUrl, targetSpaceId, spaceName, boo
                 isOpeningBookmark = false;
                 refreshCoordinator.schedule();
             }
+            await pendingSpaceSaves;
+            await refreshActiveSpaceUI();
         }
     } catch (error) {
         Logger.error("[PinnedTabActivator] Error activating pinned tab:", error);
@@ -589,6 +589,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 refreshActiveSpaceUITimeout = null;
                 refreshActiveSpaceUI();
             }, 50);
+        }
+
+        if (areaName === 'sync' && changes.spaceSwitcherStyle) {
+            applySpaceSwitcherStyle(changes.spaceSwitcherStyle.newValue);
         }
 
         if (areaName === 'sync' && changes.showAllOpenTabsInCollapsedFolders) {
@@ -786,6 +790,7 @@ async function initSidebar() {
     const settings = await Utils.getSettings();
     defaultSpaceName = settings.defaultSpaceName || 'Home';
     showAllOpenTabsInCollapsedFolders = Boolean(settings.showAllOpenTabsInCollapsedFolders);
+    applySpaceSwitcherStyle(settings.spaceSwitcherStyle);
     currentWindow = await chrome.windows.getCurrent({ populate: false });
     spaces = await spaceRequest('get');
     spaceSaveQueue.reset(spaces);
@@ -811,7 +816,7 @@ async function initSidebar() {
     const activeTab = allTabs.find(t => t.active && t.windowId === currentWindow.id);
     activeChromeTabId = activeTab?.id;
     const { activeSpaces = {} } = await chrome.storage.session.get('activeSpaces');
-    await setActiveSpace(activeSpaces[currentWindow.id] || ownerOf(spaces, activeTab?.id)?.id || spaces[0]?.id, false);
+    await setActiveSpace(activeSpaces[currentWindow.id] || ownerOf(spaces, activeTab?.id)?.id || spaces[0]?.id, false, { initial: true });
     previousSpaceId = activeSpaceId;
     setupDOMElements(createNewSpace, () => spaces);
     sidebarReady = true;
@@ -901,8 +906,10 @@ function createSpaceElement(space) {
 
 
         // Update space background color
-        sidebarContainer.style.setProperty('--space-bg-color', `var(--chrome-${newColor}-color, rgba(255, 255, 255, 0.1))`);
-        sidebarContainer.style.setProperty('--space-bg-color-dark', `var(--chrome-${space.color}-color-dark, rgba(255, 255, 255, 0.1))`);
+        if (space.id === activeSpaceId) {
+            sidebarContainer.style.setProperty('--space-bg-color', `var(--chrome-${newColor}-color, rgba(255, 255, 255, 0.1))`);
+            sidebarContainer.style.setProperty('--space-bg-color-dark', `var(--chrome-${space.color}-color-dark, rgba(255, 255, 255, 0.1))`);
+        }
 
         saveSpaces();
         await updateSpaceSwitcher();
@@ -1095,10 +1102,31 @@ function createSpaceElement(space) {
     }
 }
 
+// Draws an icon into element: a symbol as an SVG in the current text colour, anything else
+// as text. Symbols are built from Sidecove's own shape data, never from markup.
+function drawSpaceIcon(element, icon) {
+    const symbol = spaceSymbol(icon);
+    if (!symbol) {
+        element.textContent = icon;
+        return;
+    }
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('class', 'space-symbol');
+    svg.setAttribute('aria-hidden', 'true');
+    for (const [tag, attrs] of symbol.nodes) {
+        const shape = document.createElementNS(ns, tag);
+        for (const [name, value] of Object.entries(attrs)) shape.setAttribute(name, value);
+        svg.appendChild(shape);
+    }
+    element.replaceChildren(svg);
+}
+
 function renderSpaceIconButton(button, space) {
     if (!button) return;
     button.classList.toggle('has-icon', Boolean(space.icon));
-    if (space.icon) button.textContent = space.icon;
+    if (space.icon) drawSpaceIcon(button, space.icon);
     else button.innerHTML = SPACE_ICON_PLACEHOLDER;
 }
 
@@ -1128,31 +1156,56 @@ function showSpaceIconPicker(space, anchor) {
     };
     const onOutside = event => { if (!picker.contains(event.target)) close(); };
 
-    const grid = document.createElement('div');
-    grid.className = 'space-icon-grid';
-    for (const icon of SPACE_ICON_CHOICES) {
-        const choice = document.createElement('button');
-        choice.type = 'button';
-        choice.className = 'space-icon-choice';
-        choice.classList.toggle('selected', icon === space.icon);
-        choice.textContent = icon;
-        choice.addEventListener('click', () => choose(icon));
-        grid.appendChild(choice);
-    }
-    const custom = document.createElement('input');
-    custom.type = 'text';
-    custom.className = 'space-icon-custom';
-    custom.placeholder = 'Or type any emoji';
-    custom.setAttribute('aria-label', 'Custom icon');
-    custom.addEventListener('keydown', event => {
+    // Monochrome symbols first, as in Arc, then emoji; the search box filters both by name
+    // and keyword, and a typed emoji can be used as it is.
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'space-icon-custom';
+    search.placeholder = 'Search, or type an emoji';
+    search.setAttribute('aria-label', 'Search icons, or type an emoji');
+    const results = document.createElement('div');
+    results.className = 'space-icon-results';
+    const section = (title, icons) => {
+        if (!icons.length) return [];
+        const heading = document.createElement('p');
+        heading.className = 'space-icon-heading';
+        heading.textContent = title;
+        const grid = document.createElement('div');
+        grid.className = 'space-icon-grid';
+        for (const icon of icons) {
+            const choice = document.createElement('button');
+            choice.type = 'button';
+            choice.className = 'space-icon-choice';
+            choice.classList.toggle('selected', icon === space.icon);
+            choice.title = spaceSymbol(icon)?.label || '';
+            drawSpaceIcon(choice, icon);
+            choice.addEventListener('click', () => choose(icon));
+            grid.appendChild(choice);
+        }
+        return [heading, grid];
+    };
+    const showResults = () => {
+        const found = searchSpaceIcons(search.value);
+        const empty = document.createElement('p');
+        empty.className = 'space-icon-empty';
+        empty.textContent = isTypedEmoji(search.value) ? 'Press Enter to use this emoji' : 'No icons match';
+        const sections = [...section('Symbols', found.symbols), ...section('Emoji', found.emoji)];
+        results.replaceChildren(...(sections.length ? sections : [empty]));
+    };
+    search.addEventListener('keydown', event => {
         if (event.key === 'Escape') { event.stopPropagation(); close(); return; }
         if (event.key !== 'Enter') return;
-        const icon = normalizeSpaceIcon(custom.value);
-        if (icon) choose(icon);
-        else custom.classList.add('invalid');
+        const first = results.querySelector('.space-icon-choice');
+        if (isTypedEmoji(search.value)) choose(normalizeSpaceIcon(search.value));
+        else if (first && search.value.trim()) first.click();
+        else search.classList.add('invalid');
     });
-    custom.addEventListener('input', () => custom.classList.remove('invalid'));
-    picker.append(grid, custom);
+    search.addEventListener('input', () => {
+        search.classList.remove('invalid');
+        showResults();
+    });
+    showResults();
+    picker.append(search, results);
     if (space.icon) {
         const remove = document.createElement('button');
         remove.type = 'button';
@@ -1166,17 +1219,17 @@ function showSpaceIconPicker(space, anchor) {
     const rect = anchor.getBoundingClientRect();
     Utils.adjustMenuPosition(picker, Math.max(8, rect.left - 4), rect.bottom + 6);
     document.addEventListener('mousedown', onOutside, true);
-    grid.querySelector('.selected, .space-icon-choice')?.focus();
+    (results.querySelector('.selected') || search).focus();
 }
 
 async function moveSpaceFolderBefore(space, nextSpace) {
     try {
-        const arcifyFolder = await LocalStorage.getOrCreateArcifyFolder();
-        const children = await chrome.bookmarks.getChildren(arcifyFolder.id);
+        const sidecoveFolder = await LocalStorage.getOrCreateSidecoveFolder();
+        const children = await chrome.bookmarks.getChildren(sidecoveFolder.id);
         if (!children.some(node => node.id === space.bookmarkFolderId)) return;
         const nextIndex = children.findIndex(node => node.id === nextSpace?.bookmarkFolderId);
         const index = nextIndex < 0 ? children.length : nextIndex;
-        await chrome.bookmarks.move(space.bookmarkFolderId, { parentId: arcifyFolder.id, index });
+        await chrome.bookmarks.move(space.bookmarkFolderId, { parentId: sidecoveFolder.id, index });
     } catch (error) {
         Logger.warn('Could not reorder space folder:', error);
     }
@@ -1265,7 +1318,7 @@ async function handleSpaceSwitcherDrop(e) {
 
         spaces.splice(newIndex, 0, draggedSpace);
 
-        // Move the space folder too: discovery orders spaces by their folders under Arcify.
+        // Move the space folder too: discovery orders spaces by their folders under the Sidecove folder.
         await moveSpaceFolderBefore(draggedSpace, spaces[newIndex + 1]);
 
         saveSpaces();
@@ -1296,6 +1349,10 @@ async function updateSpaceSwitcher() {
 
             Logger.log("clicked for active", space);
             await setActiveSpace(space.id);
+        });
+        button.addEventListener('contextmenu', event => {
+            event.preventDefault();
+            showSpaceChipMenu(space, button, event.clientX, event.clientY);
         });
 
         // --- Drag Event Listeners for Buttons ---
@@ -1328,8 +1385,8 @@ async function updateSpaceSwitcher() {
     revealActiveSpaceChip();
 
     // Inactive space from bookmarks
-    const arcifyFolder = await LocalStorage.getOrCreateArcifyFolder();
-    const spaceFolders = await chrome.bookmarks.getChildren(arcifyFolder.id);
+    const sidecoveFolder = await LocalStorage.getOrCreateSidecoveFolder();
+    const spaceFolders = await chrome.bookmarks.getChildren(sidecoveFolder.id);
     spaceFolders.forEach(spaceFolder => {
         if (spaces.find(space => space.name == spaceFolder.title)) {
             return;
@@ -1349,16 +1406,46 @@ async function updateSpaceSwitcher() {
     revealActiveSpaceChip();
 }
 
-// The chip's text stays the space name; without an icon the compact chip shows the name's
-// first letter through CSS.
+// As in Arc, right-clicking a space's chip offers the space's own actions. Renaming and a new
+// folder happen in the space itself, so those switch to it first.
+function showSpaceChipMenu(space, chip, x, y) {
+    const spaceElement = () => getSpaceElement(space.id);
+    const inSpace = async action => {
+        if (space.id !== activeSpaceId) await setActiveSpace(space.id);
+        action(spaceElement());
+    };
+    const setColor = color => {
+        const select = spaceElement()?.querySelector('.space-color-select');
+        if (!select) return;
+        select.value = color;
+        select.dispatchEvent(new Event('change'));
+    };
+    showMenu(x, y, [
+        { label: 'Change Space Icon…', action: () => showSpaceIconPicker(space, chip) },
+        { label: 'Rename Space…', action: () => inSpace(element => element?.querySelector('.space-name')?.select()) },
+        { label: 'Theme Color', submenu: [...spaceElement().querySelectorAll('.space-color-select option')].map(option => ({ label: option.textContent, action: () => setColor(option.value) })) },
+        'separator',
+        { label: 'New Folder', action: () => inSpace(element => element && createNewFolder(element)) },
+        'separator',
+        { label: 'Delete Space', action: () => spaceElement()?.querySelector('.delete-space-btn')?.click() }
+    ], 'tab-context-menu');
+}
+
+// Arc shows each space as its icon, or a dot when it has none, and its name on hover; the
+// 'names' setting shows full names instead. The name stays in the chip for screen readers.
+function applySpaceSwitcherStyle(style) {
+    spaceSwitcher.classList.toggle('icons-only', style !== 'names');
+    updateSpaceChipDensity();
+    revealActiveSpaceChip();
+}
+
 function fillSpaceChip(button, name, icon) {
     button.title = name;
-    button.dataset.initial = spaceInitial(name);
     button.classList.toggle('has-icon', Boolean(icon));
     if (icon) {
         const iconElement = document.createElement('span');
         iconElement.className = 'space-chip-icon';
-        iconElement.textContent = icon;
+        drawSpaceIcon(iconElement, icon);
         button.appendChild(iconElement);
     }
     const label = document.createElement('span');
@@ -1367,11 +1454,15 @@ function fillSpaceChip(button, name, icon) {
     button.appendChild(label);
 }
 
-// Like Arc, shrink the chips to icons when the names no longer fit.
+// Chips keep their full names; when they do not all fit, the strip scrolls and fades
+// whichever edge still has chips beyond it.
 function updateSpaceChipDensity() {
-    spaceSwitcher.classList.remove('compact');
-    if (spaceSwitcher.scrollWidth > spaceSwitcher.clientWidth + 1) spaceSwitcher.classList.add('compact');
+    // A couple of pixels of slack: on some screens the strip stops a fraction short of its end.
+    const hidden = spaceSwitcher.scrollWidth - spaceSwitcher.clientWidth;
+    spaceSwitcher.classList.toggle('more-before', hidden > 2 && spaceSwitcher.scrollLeft > 2);
+    spaceSwitcher.classList.toggle('more-after', hidden > 2 && spaceSwitcher.scrollLeft < hidden - 2);
 }
+spaceSwitcher.addEventListener('scroll', updateSpaceChipDensity, { passive: true });
 window.addEventListener('resize', () => {
     updateSpaceChipDensity();
     revealActiveSpaceChip();
@@ -1634,7 +1725,7 @@ function clearFolderOpenTimer() {
     currentHoveredFolder = null;
 }
 
-async function setActiveSpace(spaceId, updateTab = true) {
+async function setActiveSpace(spaceId, updateTab = true, { initial = false } = {}) {
     const space = spaces.find(s => s.id === spaceId);
     if (!space) return;
     if (activeSpaceId && activeSpaceId !== spaceId) {
@@ -1646,7 +1737,7 @@ async function setActiveSpace(spaceId, updateTab = true) {
     if (activeSpaceId !== spaceId) clearSelection();
     activeSpaceId = spaceId;
     await pendingSpaceSaves;
-    await spaceRequest('activate', { windowId: currentWindow.id, spaceId });
+    await spaceRequest('activate', { windowId: currentWindow.id, spaceId, initial });
     await activateSpaceInDOM(spaceId, spaces, updateSpaceSwitcher);
     await refreshActiveSpaceUI();
     if (updateTab) {
@@ -1663,8 +1754,8 @@ async function createSpaceFromInactive(spaceName, tabToMove) {
     Logger.log(`Creating inactive space "${spaceName}" with tab:`, tabToMove);
     isCreatingSpace = true;
     try {
-        const arcifyFolder = await LocalStorage.getOrCreateArcifyFolder();
-        const spaceFolders = await chrome.bookmarks.getChildren(arcifyFolder.id);
+        const sidecoveFolder = await LocalStorage.getOrCreateSidecoveFolder();
+        const spaceFolders = await chrome.bookmarks.getChildren(sidecoveFolder.id);
         const spaceFolder = spaceFolders.find(f => f.title === spaceName);
 
         if (!spaceFolder) {
@@ -1766,7 +1857,7 @@ async function moveTabToPinned(space, tab) {
     updatePinnedSectionPlaceholders();
 
     // Persist extension ordering after membership changes.
-    await persistSpaceTabOrder(space.id, { source: 'arcify', movedTabId: tab.id });
+    await persistSpaceTabOrder(space.id);
     await refreshActiveSpaceUI();
 }
 
@@ -1787,7 +1878,7 @@ async function restoreFavoriteTab(spaceId, tabId, index, bookmark) {
     await Utils.setPinnedTabState(tabId, { pinnedUrl: bookmark.url, bookmarkId: bookmark.id });
     space.temporaryTabs = space.temporaryTabs.filter(id => id !== tabId);
     space.spaceBookmarks.splice(index, 0, tabId);
-    await persistSpaceTabOrder(space.id, { source: 'arcify', movedTabId: tabId });
+    await persistSpaceTabOrder(space.id);
     await refreshActiveSpaceUI();
 }
 
@@ -1818,7 +1909,7 @@ async function moveTabToTemp(space, tab, { temporaryDisplayOrder = null, inverte
     }
 
     // Persist extension ordering after membership changes.
-    await persistSpaceTabOrder(space.id, { source: 'arcify', movedTabId: tab.id });
+    await persistSpaceTabOrder(space.id);
     if (refresh) await refreshActiveSpaceUI();
 }
 
@@ -1896,7 +1987,7 @@ function syncCollapsedFolderTabs(folderElement) {
         });
 
         if (showAllOpenTabsInCollapsedFolders) {
-            // Arcify mode: show all open (non-bookmark-only) tabs even when folder is collapsed.
+            // Arc-style mode: show all open (non-bookmark-only) tabs even when folder is collapsed.
             const openTabs = Array.from(folderContent.querySelectorAll(':scope > .tab'))
                 .filter(t => !t.classList.contains('bookmark-only') && t.dataset.tabId);
             openTabs.forEach(t => projectFolderTab(t, collapsedContainer));
@@ -2276,10 +2367,10 @@ async function persistSpaceTabOrder(spaceId) {
 }
 
 /**
- * Called after an Arcify drag+drop to update the space model (spaceBookmarks/temporaryTabs)
+ * Called after an in-sidebar drag and drop to update the space model (spaceBookmarks/temporaryTabs)
  * from the DOM and persist the extension order.
  */
-async function handleArcifyOrderChangeAfterDrop(container) {
+async function handleOrderChangeAfterDrop(container) {
     if (!container) return;
     const spaceElement = container.closest('.space');
     if (!spaceElement) return;
@@ -2452,10 +2543,10 @@ async function setupDragAndDrop(pinnedContainer, tempContainer) {
                     syncCollapsedFolderTabs(targetFolderElement);
                 }
 
-                // Update the model from the DOM (Arcify is source of truth here), then reconcile Chrome.
+                // Update the model from the DOM (the sidebar is the source of truth here), then reconcile Chrome.
                 // This is intentionally done after bookmark operations so section membership is correct.
                 if (droppedFolder || (droppedTabId && !operationResult?.orderHandled)) {
-                    await handleArcifyOrderChangeAfterDrop(container);
+                    await handleOrderChangeAfterDrop(container);
                 }
                 if (operationResult?.orderHandled) await refreshActiveSpaceUI({ force: true });
                 } catch (error) {
@@ -2588,6 +2679,8 @@ function setupPlaceholderDragAndDrop(placeholderContainer, pinnedContainer) {
 }
 
 async function createNewFolder(spaceElement, parentFolderElement = null) {
+    // The new folder goes into Favorites; a collapsed section would hide it and its name field.
+    if (spaceElement.querySelector('.pinned-tabs.collapsed')) spaceElement.querySelector('.space-toggle-chevron')?.click();
     const space = spaces.find(s => s.id === spaceElement.dataset.spaceId);
     const spaceFolder = await getSpaceBookmarkFolder(space);
     const parentId = parentFolderElement?.dataset.bookmarkId || spaceFolder.id;
@@ -3127,8 +3220,10 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
     // Set up action button
     actionButton.classList.remove('tab-close');
     actionButton.classList.add(isBookmarkOnly ? 'tab-remove' : 'tab-close');
-    actionButton.innerHTML = isBookmarkOnly ? '−' : '×';
-    actionButton.title = isBookmarkOnly ? 'Remove Bookmark' : 'Close Tab';
+    // As in Arc: − closes an open favorite's tab and keeps the favorite; × removes the
+    // favorite itself, or closes an ordinary tab.
+    actionButton.innerHTML = isPinned && !isBookmarkOnly ? '−' : '×';
+    actionButton.title = isBookmarkOnly ? 'Remove Favorite' : isPinned ? 'Close Tab, Keep Favorite' : 'Close Tab';
     actionButton.addEventListener('click', async (e) => {
         e.stopPropagation();
         const activeSpace = spaces.find(s => s.id === activeSpaceId);
@@ -3333,11 +3428,6 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
                         isOpeningBookmark = false;
                         return;
                     }
-                    // An explicit click adopts one unbound open tab with the same URL.
-                    const adoptTab = isPinned && clickedBookmarkId ? BookmarkUtils.findAdoptableTab(
-                        allTabs.filter(t => ownerOf(spaces, t.id)?.id === activeSpaceId),
-                        bindings, tabElement.dataset.pinnedUrl || tabUrl, Utils.getPinnedUrlKey.bind(Utils)) : null;
-
                     // Check if tab is in archive and restore it
                     const archivedTabs = await Utils.getArchivedTabs();
                     const archivedTab = !isPinned && archivedTabs.find(t => t.url === tabUrl);
@@ -3382,7 +3472,7 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
                             }
 
                             // Ensure restored tab lands in correct Chrome position for this space.
-                            await persistSpaceTabOrder(targetSpaceId, { source: 'arcify', movedTabId: restoredTab.id });
+                            await persistSpaceTabOrder(targetSpaceId);
 
                             // Replace the element with the active tab element
                             if (isPinned) {
@@ -3422,8 +3512,7 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
                         title: bookmarkTitle,
                         spaceName: tab.spaceName || space.name,
                         pinnedUrl: tabElement.dataset.pinnedUrl || tabUrl,
-                        bookmarkId: tabElement.dataset.bookmarkId || null,
-                        adoptTab
+                        bookmarkId: tabElement.dataset.bookmarkId || null
                     };
 
                     // Prepare context for BookmarkUtils
@@ -3478,7 +3567,7 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
         // Read the live mute state alongside the space folders so the menu opens no later.
         const [muted, allBookmarkSpaceFolders] = await Promise.all([
             isBookmarkOnly || !tab.id ? false : chrome.tabs.get(tab.id).then(live => Boolean(live.mutedInfo?.muted), () => false),
-            LocalStorage.getOrCreateArcifyFolder().then(folder => chrome.bookmarks.getChildren(folder.id))
+            LocalStorage.getOrCreateSidecoveFolder().then(folder => chrome.bookmarks.getChildren(folder.id))
         ]);
         showTabContextMenu(
             e.pageX,

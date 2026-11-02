@@ -29,7 +29,7 @@ beforeEach(() => {
 function startBackground() {
     const event = () => ({ listeners: [], addListener(fn) { this.listeners.push(fn); } });
     const chrome = globalThis.chrome = {
-        runtime: { getURL: path => `chrome-extension://arcify/${path}`, onInstalled: event(), onStartup: event(), onMessage: event() },
+        runtime: { getURL: path => `chrome-extension://sidecove/${path}`, onInstalled: event(), onStartup: event(), onMessage: event() },
         sidePanel: { setPanelBehavior: async () => {} },
         commands: { onCommand: event() },
         alarms: { onAlarm: event() },
@@ -38,6 +38,7 @@ function startBackground() {
             query: async () => structuredClone(tabs), get: async id => structuredClone(tabs.find(t => t.id === id)),
             remove: async id => { removed.push(id); tabs = tabs.filter(t => t.id !== id); } },
         tabGroups: { onRemoved: event(), onUpdated: event(), query: async () => [] },
+        windows: { onFocusChanged: event(), get: async id => ({ id, focused: true }) },
         bookmarks: { search: async () => [{ id: 'root' }], getChildren: async () => [], getSubTree: async () => [{ id: 'root', children: [] }] }
     };
     runInNewContext(source, {
