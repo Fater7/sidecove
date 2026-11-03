@@ -49,9 +49,14 @@ test('swatches keep their default colours and follow a colour override', async (
 // the system theme. A colour without a dark value keeps the built-in dark default.
 const DARK_DEFAULT_BLUE = 'rgb(0, 43, 74)';
 const setScheme = (page, value) => page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value }]);
-const blueSwatch = page =>
-    page.evaluate(
-        () => getComputedStyle(document.querySelector('#createSpaceColorSwatch [data-color="blue"]')).backgroundColor
+// Swatches and the sidebar background fade over 0.2s, so wait for the colour to arrive.
+const waitForSwatch = (page, expected) =>
+    page.waitForFunction(
+        expected =>
+            getComputedStyle(document.querySelector('#createSpaceColorSwatch [data-color="blue"]')).backgroundColor ===
+            expected,
+        { polling: 100 },
+        expected
     );
 // The colour --chrome-blue-color resolves to under the page's current colour scheme.
 const resolveBlue = () => {
@@ -71,7 +76,7 @@ test('a light override does not reach dark mode, and a dark override does not re
         await page.evaluate(() => chrome.storage.sync.set({ colorOverrides: { blue: '#ff8800' } }));
         await setScheme(page, 'light');
         await waitForBlue(page, 'rgb(255, 136, 0)');
-        expect(await blueSwatch(page)).toBe('rgb(255, 136, 0)');
+        await waitForSwatch(page, 'rgb(255, 136, 0)');
 
         // Only a light value is set, so dark mode keeps the built-in dark colour.
         await setScheme(page, 'dark');
@@ -79,11 +84,11 @@ test('a light override does not reach dark mode, and a dark override does not re
 
         await page.evaluate(() => chrome.storage.sync.set({ colorOverridesDark: { blue: '#123456' } }));
         await waitForBlue(page, 'rgb(18, 52, 86)');
-        expect(await blueSwatch(page)).toBe('rgb(18, 52, 86)');
+        await waitForSwatch(page, 'rgb(18, 52, 86)');
 
         await setScheme(page, 'light');
         await waitForBlue(page, 'rgb(255, 136, 0)');
-        expect(await blueSwatch(page)).toBe('rgb(255, 136, 0)');
+        await waitForSwatch(page, 'rgb(255, 136, 0)');
     } finally {
         await setScheme(page, 'light');
         await page.evaluate(() => chrome.storage.sync.set({ colorOverrides: null, colorOverridesDark: null }));
@@ -146,12 +151,10 @@ test('the sidebar background follows a change of system theme without a reload',
         const light = await background();
         await setScheme(page, 'dark');
         await page.waitForFunction(
-            before => getComputedStyle(document.getElementById('sidebar-container')).backgroundColor !== before,
+            expected => getComputedStyle(document.getElementById('sidebar-container')).backgroundColor === expected,
             { polling: 100 },
-            light.background
+            dark[light.color]
         );
-        const afterSwitch = await background();
-        expect(afterSwitch.background).toBe(dark[light.color]);
     } finally {
         await setScheme(page, 'light');
     }

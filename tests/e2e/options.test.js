@@ -540,7 +540,8 @@ describe('Options Page', () => {
                 });
 
                 const expectedColors = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan'];
-                expect(resetButtons.length).toBe(expectedColors.length);
+                // One Reset for the light value and one for the dark value of each color.
+                expect(resetButtons.length).toBe(expectedColors.length * 2);
 
                 for (const color of expectedColors) {
                     const btn = resetButtons.find(b => b.colorAttr === color);
