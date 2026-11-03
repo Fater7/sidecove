@@ -37,8 +37,8 @@ To try a build, open `chrome://extensions/`, turn on **Developer mode**, click *
 ## Tests
 
 - `npm run test:unit`: unit tests with Node's built-in runner, no browser. They take a few seconds; run them before every commit.
-- `npm run test:e2e` (or `npm test`): builds, then drives real Chrome with Puppeteer and Jest. Slow; CI runs it on every pull request. `HEADED=true npm run test:e2e` shows the browser. See [tests/README.md](tests/README.md).
-- `tests/e2e/upgrade.test.js` installs earlier releases and updates each to your build. CI builds the latest release and 1.1.0; locally, set `SIDECOVE_PREVIOUS_BUILD` to one or more releases' `dist/` folders (separated by `:`, or `;` on Windows), or it relabels your own build as an old version.
+- `npm run test:e2e` (or `npm test`): builds, then drives real Chrome with Puppeteer and Jest. Slow; it runs locally before a pull request is opened or updated, with the result in the pull request description: `npm run test:e2e:local` runs it the way CI used to and prints the line to paste. `HEADED=true npm run test:e2e` shows the browser. See [tests/README.md](tests/README.md).
+- `tests/e2e/upgrade.test.js` installs earlier releases and updates each to your build. `npm run test:e2e:local` builds the latest release and 1.1.0; with plain `npm run test:e2e`, set `SIDECOVE_PREVIOUS_BUILD` to one or more releases' `dist/` folders (separated by `:`, or `;` on Windows), or it relabels your own build as an old version.
 - `tests/manual/` holds the checklists for a hands-on pass in Chrome before a release.
 
 ## Pull requests
