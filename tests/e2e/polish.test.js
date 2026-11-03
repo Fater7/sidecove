@@ -408,13 +408,17 @@ test('New Tab sits under the divider, above the open tabs, once in each space', 
     expect(layout.row.bottom).toBeLessThanOrEqual(layout.tab.top + 0.5);
     expect(layout.row.bottom).toBeLessThan(layout.switcher.top);
 
-    const before = await page.evaluate(async () => (await chrome.tabs.query({})).length);
+    const before = await page.evaluate(async () => (await chrome.tabs.query({})).map(t => t.id));
     await page.$eval('.space.active .new-tab-btn', button => button.click());
-    await page.waitForFunction(async n => (await chrome.tabs.query({})).length === n + 1, {}, before);
-    await page.evaluate(async id => {
-        const blank = (await chrome.tabs.query({})).filter(t => (t.pendingUrl || t.url).includes('newtab'));
-        await chrome.tabs.remove([id, ...blank.map(t => t.id)]);
-    }, tabId);
+    await page.waitForFunction(async ids => (await chrome.tabs.query({})).length === ids.length + 1, {}, before);
+    await page.evaluate(
+        async (id, ids) => {
+            const opened = (await chrome.tabs.query({})).filter(t => !ids.includes(t.id));
+            await chrome.tabs.remove([id, ...opened.map(t => t.id)]);
+        },
+        tabId,
+        before
+    );
 });
 
 // Chrome keeps Cmd/Ctrl+Shift+C for DevTools and will not make it an extension's default
