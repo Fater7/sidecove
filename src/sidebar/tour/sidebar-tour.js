@@ -228,7 +228,7 @@ export async function initSidebarTour() {
         if (id === 'pins' && tab?.closest('.pinned-tabs')) achieved('Pinned. This bookmark will stay.');
         if (id === 'folders' && tab?.closest('.folder')) achieved('Filed away. Click the folder to collapse it.');
         if (id === 'favorites' && tabId && document.querySelector(`#pinnedFavicons [data-tab-id="${tabId}"]`))
-            achieved('Added to Favorites. Available in every space.');
+            achieved('Added to Favorites in this space.');
     }
     const observer = new MutationObserver(records => {
         if (!active() || records.every(record => panel.contains(record.target) || record.target === ring)) return;
