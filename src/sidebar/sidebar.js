@@ -20,8 +20,11 @@ import { initSidebarTour } from './tour/sidebar-tour.js';
  */
 
 import { ChromeHelper } from './chrome-helper.js';
-import { applyColorVariables } from '../shared/color-palette.js';
 import { setSpaceColorVars } from './features/color-overrides/space-color-vars.js';
+import {
+    applyColorOverrides as applyColorOverridesFrom,
+    colorOverridesChanged
+} from './features/color-overrides/apply-color-overrides.js';
 import { spaceRequest } from '../shared/space-client.js';
 import { SpacePatchQueue } from './space-patch-queue.js';
 import { RefreshCoordinator } from './refresh-coordinator.js';
@@ -243,25 +246,14 @@ async function replaceBookmarkUrlWithCurrentUrl(tab, tabElement) {
     }
 }
 
-// Applies the light and dark colour overrides from settings; the stylesheet picks the
-// pair that matches the system theme.
-async function applyColorOverrides() {
-    try {
-        const settings = await Utils.getSettings();
-        Logger.log('Applying color overrides, settings:', settings);
-        applyColorVariables(document.documentElement, settings);
-        reapplySpaceColors();
-    } catch (error) {
-        Logger.error('Error applying color overrides:', error);
-    }
-}
-
-// Function to re-apply colors to the active space
-function reapplySpaceColors() {
-    const sidebarContainer = document.getElementById('sidebar-container');
-    const activeSpace = spaces.find(space => space.id === activeSpaceId);
-    if (!sidebarContainer || !activeSpace) return;
-    setSpaceColorVars(sidebarContainer, activeSpace.color);
+function applyColorOverrides() {
+    return applyColorOverridesFrom({
+        getSettings: Utils.getSettings,
+        root: document.documentElement,
+        container: document.getElementById('sidebar-container'),
+        activeSpace: () => spaces.find(space => space.id === activeSpaceId),
+        logger: Logger
+    });
 }
 
 // Function to update pinned favicons
@@ -573,7 +565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Listen for storage changes to re-apply colors when they're updated
     chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === 'sync' && (changes.colorOverrides || changes.colorOverridesDark)) {
+        if (areaName === 'sync' && colorOverridesChanged(changes)) {
             Logger.log('Color overrides changed, re-applying...');
             applyColorOverrides();
         }

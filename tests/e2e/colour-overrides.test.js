@@ -124,6 +124,39 @@ test('the built-in dark colours are the dark surfaces tinted with each space col
     }
 });
 
+test('the sidebar background follows a change of system theme without a reload', async () => {
+    const page = await openSidebar(browser, extensionId);
+    try {
+        const dark = {
+            grey: 'rgb(37, 45, 48)',
+            blue: 'rgb(0, 43, 74)',
+            red: 'rgb(79, 10, 16)',
+            yellow: 'rgb(64, 49, 0)',
+            green: 'rgb(0, 51, 16)',
+            pink: 'rgb(84, 24, 62)',
+            purple: 'rgb(66, 33, 89)',
+            cyan: 'rgb(1, 61, 68)'
+        };
+        const background = () =>
+            page.evaluate(() => ({
+                color: document.querySelector('.space.active .space-color-select').value,
+                background: getComputedStyle(document.getElementById('sidebar-container')).backgroundColor
+            }));
+        await setScheme(page, 'light');
+        const light = await background();
+        await setScheme(page, 'dark');
+        await page.waitForFunction(
+            before => getComputedStyle(document.getElementById('sidebar-container')).backgroundColor !== before,
+            { polling: 100 },
+            light.background
+        );
+        const afterSwitch = await background();
+        expect(afterSwitch.background).toBe(dark[light.color]);
+    } finally {
+        await setScheme(page, 'light');
+    }
+});
+
 test('Settings shows a Light and a Dark picker for each colour, each with its own Reset', async () => {
     const page = await openOptionsPage(browser, extensionId);
     try {
@@ -138,6 +171,13 @@ test('Settings shows a Light and a Dark picker for each colour, each with its ow
                 darkBlue: document.getElementById('colorBlueDark').value
             }))
         ).toEqual({ pickers: 16, lightResets: 8, darkResets: 8, darkBlue: '#002b4a' });
+        expect(
+            await page.evaluate(() =>
+                ['Grey', 'Blue', 'Red', 'Yellow', 'Green', 'Pink', 'Purple', 'Cyan'].map(
+                    name => document.getElementById(`color${name}Dark`).value
+                )
+            )
+        ).toEqual(['#252d30', '#002b4a', '#4f0a10', '#403100', '#003310', '#54183e', '#422159', '#013d44']);
 
         const pick = (id, value) =>
             page.evaluate(

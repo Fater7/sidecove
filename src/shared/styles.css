@@ -2541,9 +2541,9 @@ h3 {
         --chrome-purple-color-dark: color-mix(in srgb, var(--chrome-purple-color) 88%, white);
         --chrome-cyan-color-dark: color-mix(in srgb, var(--chrome-cyan-color) 88%, white);
 
-        /* The drop bar and the rename outline need a blue that shows on the dark panel,
-           whatever the blue space colour is. */
-        --accent-blue: #235d8b;
+        /* The drop bar and the rename outline need a blue that shows on every dark
+           surface, including the blue one. */
+        --accent-blue: #60a5fa;
     }
 
     /* The space-colour swatches show the dark override when there is one. */

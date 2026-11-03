@@ -16,6 +16,7 @@ import { firstUnusedColor } from './space-colors.js';
 import { Utils } from '../shared/utils.js';
 import { RESTORE_ICON } from './icons.js';
 import { Logger } from '../shared/logger.js';
+import { setSpaceColorVars } from './features/color-overrides/space-color-vars.js';
 
 // DOM Elements
 const spacesList = document.getElementById('spacesList');
@@ -190,14 +191,7 @@ export function activateSpaceInDOM(spaceId, spaces, updateSpaceSwitcher) {
     if (space) {
         // Update background color
         const sidebarContainer = document.getElementById('sidebar-container');
-        sidebarContainer.style.setProperty(
-            '--space-bg-color',
-            `var(--chrome-${space.color}-color, rgba(255, 255, 255, 0.1))`
-        );
-        sidebarContainer.style.setProperty(
-            '--space-bg-color-dark',
-            `var(--chrome-${space.color}-color-dark, rgba(255, 255, 255, 0.1))`
-        );
+        setSpaceColorVars(sidebarContainer, space.color);
     }
 
     // Update space switcher
