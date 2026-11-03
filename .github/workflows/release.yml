@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Release dry run
+    name: ${{ github.ref_type == 'tag' && 'Build release' || 'Release dry run' }}
     runs-on: ubuntu-latest
 
     steps:

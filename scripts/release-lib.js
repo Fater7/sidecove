@@ -9,7 +9,12 @@ export function nextVersion(current, type) {
     if (type === 'major') return `${major + 1}.0.0`;
     if (type === 'minor') return `${major}.${minor + 1}.0`;
     if (type === 'patch') return `${major}.${minor}.${patch + 1}`;
-    if (SEMVER.test(type)) return type;
+    if (SEMVER.test(type)) {
+        const next = SEMVER.exec(type).slice(1).map(Number);
+        const higher = next[0] - major || next[1] - minor || next[2] - patch;
+        if (higher <= 0) throw new Error(`Version ${type} is not higher than the current ${current}`);
+        return type;
+    }
     throw new Error(`Version type must be patch, minor, major or x.y.z, not ${type}`);
 }
 
@@ -27,7 +32,8 @@ export function setJsonVersion(text, version) {
 
 const UNRELEASED = /^## Unreleased(?: \([^)]*\))?[ \t]*$/m;
 
-// Turns the CHANGELOG's Unreleased section into the section for this version.
+// Turns the CHANGELOG's Unreleased section into the section for this version, with a fresh,
+// empty Unreleased section above it for the next changes.
 export function promoteUnreleased(changelog, version) {
     const match = UNRELEASED.exec(changelog);
     if (!match) throw new Error('CHANGELOG.md has no "## Unreleased" section');
@@ -36,7 +42,11 @@ export function promoteUnreleased(changelog, version) {
     if (new RegExp(`^## ${escape(version)}\\s*$`, 'm').test(changelog)) {
         throw new Error(`CHANGELOG.md already has a section for ${version}`);
     }
-    return changelog.slice(0, match.index) + `## ${version}` + changelog.slice(match.index + match[0].length);
+    return (
+        changelog.slice(0, match.index) +
+        `## Unreleased\n\n## ${version}` +
+        changelog.slice(match.index + match[0].length)
+    );
 }
 
 // The CHANGELOG text for one released version, without its heading.
@@ -64,7 +74,9 @@ export function versionProblems({ tag, packageVersion, manifestVersion }) {
 }
 
 function sectionBody(changelog, headingIndex) {
-    const start = changelog.indexOf('\n', headingIndex) + 1;
+    const end = changelog.indexOf('\n', headingIndex);
+    if (end === -1) return ''; // The heading is the last line.
+    const start = end + 1;
     const next = changelog.slice(start).search(/^## /m);
     return (next === -1 ? changelog.slice(start) : changelog.slice(start, start + next)).trim();
 }

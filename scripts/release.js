@@ -15,7 +15,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const file = name => path.join(root, name);
 const read = name => fs.readFileSync(file(name), 'utf8');
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
-const repository = 'matthewmoorcroft/sidecove';
+const repository = process.env.GITHUB_REPOSITORY || 'matthewmoorcroft/sidecove';
 
 function fail(message) {
     console.error(`❌ ${message}`);
@@ -43,16 +43,20 @@ function prepare(type) {
     const { packageVersion } = versions();
     const version = nextVersion(packageVersion, type);
     const branch = `release/v${version}`;
-    const changelog = promoteUnreleased(read('CHANGELOG.md'), version);
-
-    git('switch', '--create', branch);
-    for (const name of ['package.json', 'manifest.json'])
-        fs.writeFileSync(file(name), setJsonVersion(read(name), version));
+    if (git('branch', '--list', branch)) fail(`Branch ${branch} already exists.`);
+    // Work out every new file first, so a problem stops the release before anything changes.
     const lock = JSON.parse(read('package-lock.json'));
     lock.version = version;
     lock.packages[''].version = version;
-    fs.writeFileSync(file('package-lock.json'), `${JSON.stringify(lock, null, 2)}\n`);
-    fs.writeFileSync(file('CHANGELOG.md'), changelog);
+    const updates = {
+        'package.json': setJsonVersion(read('package.json'), version),
+        'manifest.json': setJsonVersion(read('manifest.json'), version),
+        'package-lock.json': `${JSON.stringify(lock, null, 2)}\n`,
+        'CHANGELOG.md': promoteUnreleased(read('CHANGELOG.md'), version)
+    };
+
+    git('switch', '--create', branch);
+    for (const [name, text] of Object.entries(updates)) fs.writeFileSync(file(name), text);
     git('add', 'package.json', 'package-lock.json', 'manifest.json', 'CHANGELOG.md');
     git('commit', '--quiet', '--message', `Release ${version}`);
 
@@ -60,7 +64,8 @@ function prepare(type) {
     console.log('Next:');
     console.log(`  1. git push --set-upstream origin ${branch}`);
     console.log(`  2. Open a pull request into main: https://github.com/${repository}/compare/main...${branch}`);
-    console.log('  3. When CI passes and it merges, run "npm run release:tag" on an up-to-date main.');
+    console.log("  3. Run the checklists in tests/manual/ on the zip from the PR's Release dry run.");
+    console.log('  4. When CI passes and it merges, run "npm run release:tag" on an up-to-date main.');
 }
 
 function tag() {
