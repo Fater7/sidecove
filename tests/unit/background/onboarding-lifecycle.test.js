@@ -21,7 +21,10 @@ test('a fresh install opens the onboarding guide once', async () => {
 });
 
 test('uncompleted updates and completed installs do not use the same version gate', async () => {
-    for (const [reason, completed, expected] of [['update', false, 1], ['install', true, 0]]) {
+    for (const [reason, completed, expected] of [
+        ['update', false, 1],
+        ['install', true, 0]
+    ]) {
         const app = background(completed);
         await Promise.all(app.installed.map(listener => listener({ reason })));
         assert.equal(app.opened.length, expected);
