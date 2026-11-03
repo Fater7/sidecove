@@ -284,7 +284,7 @@ test('New Tab is a plain row lined up with the tabs, and readable in every space
     await page.waitForSelector(`.space.active .tab[data-tab-id="${tabId}"] .tab-favicon`);
     await page.mouse.move(350, 5);
     const look = await page.evaluate(id => {
-        const button = document.getElementById('newTabBtn');
+        const button = document.querySelector('.space.active .new-tab-btn');
         const style = getComputedStyle(button);
         const plus = button.querySelector('span').getBoundingClientRect();
         const icon = document
@@ -336,7 +336,7 @@ test('New Tab is a plain row lined up with the tabs, and readable in every space
             );
             const text = el => ratio(over(rgba(getComputedStyle(el).color), bg), bg);
             return {
-                newTab: text(document.getElementById('newTabBtn')),
+                newTab: text(document.querySelector('.space.active .new-tab-btn')),
                 title: text(document.querySelector(`.space.active .tab[data-tab-id="${id}"] .tab-title-display`))
             };
         }, tabId);
@@ -379,6 +379,42 @@ test('New Tab is a plain row lined up with the tabs, and readable in every space
     }, original);
     await page.evaluate(id => chrome.tabs.remove(id), tabId);
     expect(short).toEqual([]);
+});
+
+// As in Arc: the New Tab row sits directly under the divider that separates the favorites
+// from the open tabs, once per space, and no longer in a footer under the whole list.
+test('New Tab sits under the divider, above the open tabs, once in each space', async () => {
+    await page.bringToFront();
+    const tabId = await page.evaluate(
+        async () => (await chrome.tabs.create({ url: 'about:blank#new-tab-position', active: false })).id
+    );
+    await page.waitForSelector(`.space.active .tab[data-tab-id="${tabId}"]`);
+    const layout = await page.evaluate(id => {
+        const space = document.querySelector('.space.active');
+        const rect = el => el.getBoundingClientRect();
+        const tab = space.querySelector(`.tab[data-tab-id="${id}"]`);
+        return {
+            rows: space.querySelectorAll('.new-tab-btn').length,
+            oldIds: document.querySelectorAll('#newTabBtn, .new-tab-btn-container').length,
+            header: rect(space.querySelector('.temp-header')),
+            row: rect(space.querySelector('.new-tab-btn')),
+            tab: rect(tab),
+            switcher: rect(document.querySelector('.space-switcher-container'))
+        };
+    }, tabId);
+    expect(layout.rows).toBe(1);
+    expect(layout.oldIds).toBe(0);
+    expect(layout.row.top).toBeGreaterThanOrEqual(layout.header.bottom - 0.5);
+    expect(layout.row.bottom).toBeLessThanOrEqual(layout.tab.top + 0.5);
+    expect(layout.row.bottom).toBeLessThan(layout.switcher.top);
+
+    const before = await page.evaluate(async () => (await chrome.tabs.query({})).length);
+    await page.$eval('.space.active .new-tab-btn', button => button.click());
+    await page.waitForFunction(async n => (await chrome.tabs.query({})).length === n + 1, {}, before);
+    await page.evaluate(async id => {
+        const blank = (await chrome.tabs.query({})).filter(t => (t.pendingUrl || t.url).includes('newtab'));
+        await chrome.tabs.remove([id, ...blank.map(t => t.id)]);
+    }, tabId);
 });
 
 // Chrome keeps Cmd/Ctrl+Shift+C for DevTools and will not make it an extension's default

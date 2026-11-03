@@ -20,7 +20,7 @@ export async function initSidebarTour() {
     ring.hidden = true;
     ring.setAttribute('aria-hidden', 'true');
     document.getElementById('sidebar-container').append(ring);
-    document.querySelector('.new-tab-btn-container').before(panel);
+    document.querySelector('.space-switcher-container').before(panel);
     const el = id => document.getElementById(id);
     const activeSpace = () =>
         [...document.querySelectorAll('#spacesList > .space')].find(space => space.style.display !== 'none');

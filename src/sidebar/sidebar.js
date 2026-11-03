@@ -24,6 +24,7 @@ import { spaceRequest } from '../shared/space-client.js';
 import { SpacePatchQueue } from './space-patch-queue.js';
 import { RefreshCoordinator } from './refresh-coordinator.js';
 import { EditSessionRegistry } from './edit-sessions.js';
+import { wireNewTabRow } from './features/new-tab/new-tab-row.js';
 import { isProtectedFavorite } from '../shared/favorite-safety.js';
 import {
     selectWindowSpaceTabs,
@@ -83,7 +84,6 @@ import { resolveSpaceTarget, scrollLeftToReveal, spaceRequestFromKey } from '../
 const spacesList = document.getElementById('spacesList');
 const spaceSwitcher = document.getElementById('spaceSwitcher');
 const addSpaceBtn = document.getElementById('addSpaceBtn');
-const newTabBtn = document.getElementById('newTabBtn');
 const spaceTemplate = document.getElementById('spaceTemplate');
 
 // Global state
@@ -1123,6 +1123,7 @@ function createSpaceElement(space) {
     // Set up clean tabs button
     const cleanBtn = spaceElement.querySelector('.clean-tabs-btn');
     cleanBtn.addEventListener('click', () => cleanTemporaryTabs(space.id));
+    wireNewTabRow(spaceElement);
 
     // Set up options menu
     const newFolderBtn = spaceElement.querySelector('.new-folder-btn');
