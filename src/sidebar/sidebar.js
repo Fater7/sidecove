@@ -312,7 +312,7 @@ async function updatePinnedFavicons() {
             img.src = Utils.getFaviconUrl(tab.url, "96");
             img.onerror = () => {
                 img.src = tab.favIconUrl;
-                img.onerror = () => { img.src = 'assets/default_icon.png'; }; // Fallback favicon
+                img.onerror = () => { img.src = '/assets/default_icon.png'; }; // Fallback favicon
             };
             img.alt = tab.title;
 
@@ -3173,7 +3173,7 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
     favicon.draggable = false; // Drag the tab, never the favicon image URL.
     favicon.onerror = () => {
         favicon.src = tab.favIconUrl;
-        favicon.onerror = () => { favicon.src = 'assets/default_icon.png'; }; // Fallback favicon
+        favicon.onerror = () => { favicon.src = '/assets/default_icon.png'; }; // Fallback favicon
     }; // Fallback favicon
 
     // Arc-like: clicking the favicon takes you back to the pinned URL (if navigated away).
@@ -3671,7 +3671,7 @@ function renderTabSearch() {
         const favicon = document.createElement('img');
         favicon.className = 'tab-favicon';
         favicon.src = Utils.getFaviconUrl(entry.url);
-        favicon.onerror = () => { favicon.src = 'assets/default_icon.png'; };
+        favicon.onerror = () => { favicon.src = '/assets/default_icon.png'; };
         const details = document.createElement('div');
         details.className = 'tab-details';
         const title = document.createElement('span');
@@ -4164,7 +4164,7 @@ function handleTabUpdate(tabId, changeInfo, tab) {
                     img.src = tab.favIconUrl;
                     img.onerror = () => {
                         img.src = tab.favIconUrl;
-                        img.onerror = () => { img.src = 'assets/default_icon.png'; }; // Fallback favicon
+                        img.onerror = () => { img.src = '/assets/default_icon.png'; }; // Fallback favicon
                     };
                 }
             }

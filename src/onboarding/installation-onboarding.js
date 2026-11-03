@@ -29,7 +29,7 @@ function updateMotion() {
     $('setup-gif').hidden = stopped;
     // Remove the animated source while stopped, so the GIF does not keep decoding.
     if (stopped) $('setup-gif').removeAttribute('src');
-    else if (!$('setup-gif').hasAttribute('src')) $('setup-gif').src = 'assets/chrometutorial.gif';
+    else if (!$('setup-gif').hasAttribute('src')) $('setup-gif').src = '/assets/chrometutorial.gif';
     $('motion-still').hidden = !stopped;
     $('pause').textContent = motion.matches ? 'Motion reduced' : paused ? 'Play animation' : 'Pause animation';
     $('pause').disabled = motion.matches;

@@ -46,3 +46,25 @@ test('missing files are reported from the manifest, pages, stylesheets and scrip
         'styles.css -> assets/font.ttf'
     ]);
 });
+
+test('module imports resolve against the importing chunk, and each missing path is reported once', () => {
+    const root = build({
+        'manifest.json': JSON.stringify({ background: { service_worker: 'background.js' }, action: { default_icon: 'assets/icon.png' } }),
+        'assets/icon.png': '',
+        'background.js': 'import{a}from"./assets/state-abc.js";import"./assets/gone.js";chrome.runtime.getURL("gone.html");chrome.tabs.create({url:"gone.html"})',
+        'assets/state-abc.js': 'import{b}from"./shared-def.js";export const a=import("./lazy-ghi.js")',
+        'assets/shared-def.js': 'export const b=1'
+    });
+    assert.deepEqual(findMissing(root).sort(), [
+        'assets/state-abc.js -> ./lazy-ghi.js',
+        'background.js -> ./assets/gone.js',
+        'background.js -> gone.html'
+    ]);
+});
+
+test('a relative root works, and a path that escapes it is reported', () => {
+    const root = build({ 'manifest.json': '{}', 'page.html': '<img src="../outside.png">' });
+    fs.writeFileSync(path.join(path.dirname(root), 'outside.png'), '');
+    const relative = path.relative(process.cwd(), root);
+    assert.deepEqual(findMissing(relative), ['page.html -> ../outside.png']);
+});

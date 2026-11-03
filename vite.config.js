@@ -55,6 +55,6 @@ export default defineConfig(({ mode }) => {
         watch: { include: ['src/**/*.js', 'src/**/*.html', 'src/**/*.css', 'public/**', 'manifest.json'] }
       })
     },
-    plugins: [staticCopy({ outDir })],
+    plugins: [staticCopy()],
   };
 });
