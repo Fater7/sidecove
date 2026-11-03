@@ -38,10 +38,13 @@ const UNRELEASED = /^## Unreleased(?: \(([^)]*)\))?[ \t]*$/m;
 export function promoteUnreleased(changelog, version) {
     const match = UNRELEASED.exec(changelog);
     if (!match) throw new Error('CHANGELOG.md has no "## Unreleased" section');
-    // Anything that looks like a version counts, so "(v1.3.0)" or "(1.3)" cannot slip past.
-    const planned = match[1]?.trim().replace(/^v/, '');
-    if (/^\d+(\.\d+)*$/.test(planned ?? '') && planned !== version) {
-        throw new Error(`CHANGELOG.md plans this release as ${match[1].trim()}, not ${version}`);
+    // Anything with a dotted number, such as "(1.3)" or "(v1.3.0-rc1)", counts as a planned
+    // version and must be written x.y.z; other notes, such as "(next)" or "(2026)", are ignored.
+    const note = match[1]?.trim() ?? '';
+    if (/\d+\.\d+/.test(note)) {
+        const planned = /^[vV]?(\d+\.\d+\.\d+)$/.exec(note)?.[1];
+        if (!planned) throw new Error(`Write the planned version in CHANGELOG.md as x.y.z, not "${note}"`);
+        if (planned !== version) throw new Error(`CHANGELOG.md plans this release as ${planned}, not ${version}`);
     }
     const notes = sectionBody(changelog, match.index);
     if (!notes) throw new Error('The Unreleased section of CHANGELOG.md is empty');

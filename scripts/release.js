@@ -43,7 +43,9 @@ function prepare(type) {
     const { packageVersion } = versions();
     const version = nextVersion(packageVersion, type);
     const branch = `release/v${version}`;
-    if (git('branch', '--list', branch) || git('ls-remote', 'origin', `refs/heads/${branch}`)) {
+    // ls-remote matches the end of ref names, so compare the whole ref.
+    const remoteRefs = git('ls-remote', 'origin', `refs/heads/${branch}`).split('\n');
+    if (git('branch', '--list', branch) || remoteRefs.some(line => line.split('\t')[1] === `refs/heads/${branch}`)) {
         fail(`Branch ${branch} already exists.`);
     }
     // Work out every new file first, so a problem stops the release before anything changes.
@@ -64,12 +66,16 @@ function prepare(type) {
         git('commit', '--quiet', '--message', `Release ${version}`);
     } catch (error) {
         // Back to a clean main with no release branch, so the command can simply be run again.
-        try {
-            git('reset', '--quiet', '--hard', 'HEAD');
-            git('switch', '--quiet', 'main');
-            git('branch', '--delete', '--force', branch);
-        } catch {
-            console.error(`⚠️ Could not undo the release branch; check out main and delete ${branch} by hand.`);
+        for (const step of [
+            ['reset', '--quiet', '--hard', 'HEAD'],
+            ['switch', '--quiet', 'main'],
+            ['branch', '--delete', '--force', branch]
+        ]) {
+            try {
+                git(...step);
+            } catch (undoError) {
+                console.error(`⚠️ git ${step.join(' ')} failed while undoing ${branch}: ${undoError.message}`);
+            }
         }
         throw error;
     }
