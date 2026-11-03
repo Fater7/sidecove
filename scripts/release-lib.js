@@ -38,9 +38,10 @@ const UNRELEASED = /^## Unreleased(?: \(([^)]*)\))?[ \t]*$/m;
 export function promoteUnreleased(changelog, version) {
     const match = UNRELEASED.exec(changelog);
     if (!match) throw new Error('CHANGELOG.md has no "## Unreleased" section');
-    const planned = match[1]?.trim();
-    if (SEMVER.test(planned) && planned !== version) {
-        throw new Error(`CHANGELOG.md plans this release as ${planned}, not ${version}`);
+    // Anything that looks like a version counts, so "(v1.3.0)" or "(1.3)" cannot slip past.
+    const planned = match[1]?.trim().replace(/^v/, '');
+    if (/^\d+(\.\d+)*$/.test(planned ?? '') && planned !== version) {
+        throw new Error(`CHANGELOG.md plans this release as ${match[1].trim()}, not ${version}`);
     }
     const notes = sectionBody(changelog, match.index);
     if (!notes) throw new Error('The Unreleased section of CHANGELOG.md is empty');

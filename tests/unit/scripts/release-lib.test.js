@@ -74,6 +74,9 @@ test('a tag must match a version that package.json and manifest.json share', () 
 test('a planned version in the Unreleased heading must be the version being released', () => {
     assert.throws(() => promoteUnreleased(changelog, '1.2.1'), /plans this release as 1\.3\.0, not 1\.2\.1/);
     assert.throws(() => promoteUnreleased(changelog, '2.0.0'), /plans this release as 1\.3\.0/);
+    assert.throws(() => promoteUnreleased(changelog.replace('(1.3.0)', '(v1.3.0)'), '1.2.1'), /as v1\.3\.0/);
+    assert.throws(() => promoteUnreleased(changelog.replace('(1.3.0)', '(1.3)'), '1.2.1'), /as 1\.3,/);
+    assert.match(promoteUnreleased(changelog.replace('(1.3.0)', '(v1.3.0)'), '1.3.0'), /^## 1\.3\.0$/m);
     const unplanned = changelog.replace('(1.3.0)', '(next)');
     assert.match(promoteUnreleased(unplanned, '1.2.1'), /^## Unreleased\n\n## 1\.2\.1$/m);
 });

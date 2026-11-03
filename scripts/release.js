@@ -43,7 +43,7 @@ function prepare(type) {
     const { packageVersion } = versions();
     const version = nextVersion(packageVersion, type);
     const branch = `release/v${version}`;
-    if (git('branch', '--list', branch) || git('ls-remote', '--heads', 'origin', branch)) {
+    if (git('branch', '--list', branch) || git('ls-remote', 'origin', `refs/heads/${branch}`)) {
         fail(`Branch ${branch} already exists.`);
     }
     // Work out every new file first, so a problem stops the release before anything changes.
@@ -64,9 +64,13 @@ function prepare(type) {
         git('commit', '--quiet', '--message', `Release ${version}`);
     } catch (error) {
         // Back to a clean main with no release branch, so the command can simply be run again.
-        git('reset', '--quiet', '--hard', 'HEAD');
-        git('switch', '--quiet', 'main');
-        git('branch', '--delete', '--force', branch);
+        try {
+            git('reset', '--quiet', '--hard', 'HEAD');
+            git('switch', '--quiet', 'main');
+            git('branch', '--delete', '--force', branch);
+        } catch {
+            console.error(`⚠️ Could not undo the release branch; check out main and delete ${branch} by hand.`);
+        }
         throw error;
     }
 
@@ -109,9 +113,10 @@ function check(tagName) {
 
 function notes(version) {
     if (!version) fail('Usage: node scripts/release.js notes <x.y.z>');
+    // Only vX.Y.Z tags are releases, as in release.yml's trigger.
     const previous = git('tag', '--list', 'v*', '--sort=-v:refname', '--merged', 'HEAD')
         .split('\n')
-        .find(name => name && name !== `v${version}`);
+        .find(name => /^v\d+\.\d+\.\d+$/.test(name) && name !== `v${version}`);
     const lines = [
         releaseNotes(read('CHANGELOG.md'), version),
         '',
