@@ -48,7 +48,10 @@ test('the Unreleased section becomes the release section and its notes are reada
     assert.throws(() => promoteUnreleased(released, '1.4.0'), /empty/);
     assert.equal(releaseNotes(released, '1.3.0'), '- **New thing:** it works.\n- Another line.');
     assert.equal(releaseNotes(released, '1.2.0'), 'An earlier release.\n\n- Old change.');
-    assert.throws(() => promoteUnreleased(changelog, '1.2.0'), /already has a section for 1.2.0/);
+    assert.throws(
+        () => promoteUnreleased(changelog.replace(' (1.3.0)', ''), '1.2.0'),
+        /already has a section for 1.2.0/
+    );
     assert.throws(() => promoteUnreleased('## Unreleased\n\n## 1.0.0\n- x\n', '1.1.0'), /empty/);
     assert.throws(() => releaseNotes(changelog, '9.9.9'), /no "## 9.9.9"/);
     assert.throws(() => promoteUnreleased('# Changelog\n\n## Unreleased', '1.0.0'), /empty/);
@@ -66,4 +69,11 @@ test('a tag must match a version that package.json and manifest.json share', () 
         versionProblems({ tag: 'v1.3.0-rc.1', packageVersion: '1.3.0', manifestVersion: '1.3.0' })[0],
         /does not match/
     );
+});
+
+test('a planned version in the Unreleased heading must be the version being released', () => {
+    assert.throws(() => promoteUnreleased(changelog, '1.2.1'), /plans this release as 1\.3\.0, not 1\.2\.1/);
+    assert.throws(() => promoteUnreleased(changelog, '2.0.0'), /plans this release as 1\.3\.0/);
+    const unplanned = changelog.replace('(1.3.0)', '(next)');
+    assert.match(promoteUnreleased(unplanned, '1.2.1'), /^## Unreleased\n\n## 1\.2\.1$/m);
 });

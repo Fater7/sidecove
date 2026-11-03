@@ -43,7 +43,9 @@ function prepare(type) {
     const { packageVersion } = versions();
     const version = nextVersion(packageVersion, type);
     const branch = `release/v${version}`;
-    if (git('branch', '--list', branch)) fail(`Branch ${branch} already exists.`);
+    if (git('branch', '--list', branch) || git('ls-remote', '--heads', 'origin', branch)) {
+        fail(`Branch ${branch} already exists.`);
+    }
     // Work out every new file first, so a problem stops the release before anything changes.
     const lock = JSON.parse(read('package-lock.json'));
     lock.version = version;
@@ -56,9 +58,17 @@ function prepare(type) {
     };
 
     git('switch', '--create', branch);
-    for (const [name, text] of Object.entries(updates)) fs.writeFileSync(file(name), text);
-    git('add', 'package.json', 'package-lock.json', 'manifest.json', 'CHANGELOG.md');
-    git('commit', '--quiet', '--message', `Release ${version}`);
+    try {
+        for (const [name, text] of Object.entries(updates)) fs.writeFileSync(file(name), text);
+        git('add', 'package.json', 'package-lock.json', 'manifest.json', 'CHANGELOG.md');
+        git('commit', '--quiet', '--message', `Release ${version}`);
+    } catch (error) {
+        // Back to a clean main with no release branch, so the command can simply be run again.
+        git('reset', '--quiet', '--hard', 'HEAD');
+        git('switch', '--quiet', 'main');
+        git('branch', '--delete', '--force', branch);
+        throw error;
+    }
 
     console.log(`✅ ${branch}: version ${packageVersion} -> ${version}, CHANGELOG section "## ${version}".`);
     console.log('Next:');
@@ -77,7 +87,13 @@ function tag() {
     releaseNotes(read('CHANGELOG.md'), manifestVersion);
     if (git('tag', '--list', name)) fail(`Tag ${name} already exists. Did the release PR bump the version?`);
     git('tag', '--annotate', name, '--message', `Sidecove ${manifestVersion}`);
-    git('push', 'origin', name);
+    try {
+        git('push', 'origin', name);
+    } catch (error) {
+        // An unpushed tag would make the next attempt fail as "already exists".
+        git('tag', '--delete', name);
+        throw error;
+    }
     console.log(
         `✅ Pushed ${name}. Follow the Release workflow: https://github.com/${repository}/actions/workflows/release.yml`
     );

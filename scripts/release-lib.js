@@ -30,13 +30,18 @@ export function setJsonVersion(text, version) {
     return result;
 }
 
-const UNRELEASED = /^## Unreleased(?: \([^)]*\))?[ \t]*$/m;
+const UNRELEASED = /^## Unreleased(?: \(([^)]*)\))?[ \t]*$/m;
 
 // Turns the CHANGELOG's Unreleased section into the section for this version, with a fresh,
-// empty Unreleased section above it for the next changes.
+// empty Unreleased section above it for the next changes. A planned version in the heading,
+// as in "## Unreleased (1.3.0)", must be the version being released.
 export function promoteUnreleased(changelog, version) {
     const match = UNRELEASED.exec(changelog);
     if (!match) throw new Error('CHANGELOG.md has no "## Unreleased" section');
+    const planned = match[1]?.trim();
+    if (SEMVER.test(planned) && planned !== version) {
+        throw new Error(`CHANGELOG.md plans this release as ${planned}, not ${version}`);
+    }
     const notes = sectionBody(changelog, match.index);
     if (!notes) throw new Error('The Unreleased section of CHANGELOG.md is empty');
     if (new RegExp(`^## ${escape(version)}\\s*$`, 'm').test(changelog)) {

@@ -42,7 +42,6 @@ const boundaries = {
 
 // Older code that already had warnings when linting was added. New files get these as errors.
 const legacy = [
-    'scripts/release.js',
     'src/background/auto-archive.js',
     'src/background/background.js',
     'src/shared/bookmark-utils.js',

@@ -1,11 +1,12 @@
 name: Release
 
-# A v* tag on main publishes a release. Every pull request runs the same build, checks and
+# A vX.Y.Z tag on main publishes a release. Every pull request runs the same build, checks and
 # notes as a dry run, without publishing anything. See CONTRIBUTING.md for the release flow.
+# Chrome versions are numbers only, so there are no -rc or -beta prereleases.
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   pull_request:
 
 permissions:
