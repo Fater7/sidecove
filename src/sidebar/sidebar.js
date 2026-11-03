@@ -20,6 +20,8 @@ import { initSidebarTour } from './tour/sidebar-tour.js';
  */
 
 import { ChromeHelper } from './chrome-helper.js';
+import { applyColorVariables } from '../shared/color-palette.js';
+import { setSpaceColorVars } from './features/color-overrides/space-color-vars.js';
 import { spaceRequest } from '../shared/space-client.js';
 import { SpacePatchQueue } from './space-patch-queue.js';
 import { RefreshCoordinator } from './refresh-coordinator.js';
@@ -241,35 +243,13 @@ async function replaceBookmarkUrlWithCurrentUrl(tab, tabElement) {
     }
 }
 
-// Function to apply color overrides from settings
+// Applies the light and dark colour overrides from settings; the stylesheet picks the
+// pair that matches the system theme.
 async function applyColorOverrides() {
     try {
         const settings = await Utils.getSettings();
         Logger.log('Applying color overrides, settings:', settings);
-
-        const root = document.documentElement;
-
-        // Clear any existing overrides first
-        const colorNames = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan'];
-        colorNames.forEach(colorName => {
-            root.style.removeProperty(`--user-chrome-${colorName}-color`);
-        });
-
-        // Apply new overrides if they exist
-        if (settings.colorOverrides && Object.keys(settings.colorOverrides).length > 0) {
-            Logger.log('Found color overrides:', settings.colorOverrides);
-            Object.keys(settings.colorOverrides).forEach(colorName => {
-                const colorValue = settings.colorOverrides[colorName];
-                if (colorValue) {
-                    root.style.setProperty(`--user-chrome-${colorName}-color`, colorValue);
-                    Logger.log(`Applied color override: --user-chrome-${colorName}-color = ${colorValue}`);
-                }
-            });
-        } else {
-            Logger.log('No color overrides found in settings');
-        }
-
-        // Re-apply colors to all existing spaces
+        applyColorVariables(document.documentElement, settings);
         reapplySpaceColors();
     } catch (error) {
         Logger.error('Error applying color overrides:', error);
@@ -279,31 +259,9 @@ async function applyColorOverrides() {
 // Function to re-apply colors to the active space
 function reapplySpaceColors() {
     const sidebarContainer = document.getElementById('sidebar-container');
-    if (!sidebarContainer || !activeSpaceId || spaces.length === 0) return;
-
-    // Find the active space
     const activeSpace = spaces.find(space => space.id === activeSpaceId);
-    if (!activeSpace) return;
-
-    const root = document.documentElement;
-    const colorVar = `--chrome-${activeSpace.color}-color`;
-    const colorDarkVar = `--chrome-${activeSpace.color}-color-dark`;
-
-    // Get computed values
-    const computedStyle = getComputedStyle(root);
-    let colorValue = computedStyle.getPropertyValue(colorVar).trim();
-    let colorDarkValue = computedStyle.getPropertyValue(colorDarkVar).trim();
-
-    // Fallback if variables aren't set yet
-    if (!colorValue) {
-        colorValue = `var(--chrome-${activeSpace.color}-color, rgba(255, 255, 255, 0.1))`;
-    }
-    if (!colorDarkValue) {
-        colorDarkValue = `var(--chrome-${activeSpace.color}-color-dark, rgba(255, 255, 255, 0.1))`;
-    }
-
-    sidebarContainer.style.setProperty('--space-bg-color', colorValue);
-    sidebarContainer.style.setProperty('--space-bg-color-dark', colorDarkValue);
+    if (!sidebarContainer || !activeSpace) return;
+    setSpaceColorVars(sidebarContainer, activeSpace.color);
 }
 
 // Function to update pinned favicons
@@ -615,7 +573,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Listen for storage changes to re-apply colors when they're updated
     chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === 'sync' && changes.colorOverrides) {
+        if (areaName === 'sync' && (changes.colorOverrides || changes.colorOverridesDark)) {
             Logger.log('Color overrides changed, re-applying...');
             applyColorOverrides();
         }
@@ -961,27 +919,7 @@ function createSpaceElement(space) {
     spaceContainer.style.display = space.id === activeSpaceId ? 'flex' : 'none';
     spaceContainer.dataset.spaceUuid = space.id;
 
-    // Set space background color from extension settings
-    // Get the computed value from :root to ensure overrides are applied
-    const root = document.documentElement;
-    const colorVar = `--chrome-${space.color}-color`;
-    const colorDarkVar = `--chrome-${space.color}-color-dark`;
-
-    // Get computed values - this will resolve the CSS variable chain
-    const computedStyle = getComputedStyle(root);
-    let colorValue = computedStyle.getPropertyValue(colorVar).trim();
-    let colorDarkValue = computedStyle.getPropertyValue(colorDarkVar).trim();
-
-    // Fallback if variables aren't set yet
-    if (!colorValue) {
-        colorValue = `var(--chrome-${space.color}-color, rgba(255, 255, 255, 0.1))`;
-    }
-    if (!colorDarkValue) {
-        colorDarkValue = `var(--chrome-${space.color}-color-dark, rgba(255, 255, 255, 0.1))`;
-    }
-
-    sidebarContainer.style.setProperty('--space-bg-color', colorValue);
-    sidebarContainer.style.setProperty('--space-bg-color-dark', colorDarkValue);
+    setSpaceColorVars(sidebarContainer, space.color);
 
     // Set up color select
     const colorSelect = spaceElement.getElementById('spaceColorSelect');
@@ -992,14 +930,7 @@ function createSpaceElement(space) {
 
         // Update space background color
         if (space.id === activeSpaceId) {
-            sidebarContainer.style.setProperty(
-                '--space-bg-color',
-                `var(--chrome-${newColor}-color, rgba(255, 255, 255, 0.1))`
-            );
-            sidebarContainer.style.setProperty(
-                '--space-bg-color-dark',
-                `var(--chrome-${space.color}-color-dark, rgba(255, 255, 255, 0.1))`
-            );
+            setSpaceColorVars(sidebarContainer, newColor);
         }
 
         saveSpaces();

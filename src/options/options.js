@@ -15,24 +15,31 @@
 import { Utils, normalizePinMatchHost } from '../shared/utils.js';
 import { LocalStorage } from '../shared/localstorage.js';
 import { Logger } from '../shared/logger.js';
+import {
+    COLOR_NAMES,
+    LIGHT_DEFAULTS,
+    DARK_DEFAULTS,
+    applyColorVariables,
+    buildColorOverrides,
+    readColorOverrides
+} from '../shared/color-palette.js';
 
-// Default color values (must be 6-digit hex for color picker compatibility)
-const DEFAULT_COLORS = {
-    grey: '#cccccc',
-    blue: '#8bb3f3',
-    red: '#ff9e97',
-    yellow: '#ffe29f',
-    green: '#8bda99',
-    pink: '#fbaad7',
-    purple: '#d6a6ff',
-    cyan: '#a5e2ea'
-};
+// The color pickers' ids: colorGrey for the light value, colorGreyDark for the dark one.
+function getColorPickerId(colorName, mode) {
+    const id = `color${colorName.charAt(0).toUpperCase() + colorName.slice(1)}`;
+    return mode === 'dark' ? `${id}Dark` : id;
+}
 
-const COLOR_NAMES = Object.keys(DEFAULT_COLORS);
+const DEFAULTS_BY_MODE = { light: LIGHT_DEFAULTS, dark: DARK_DEFAULTS };
 
-// Helper to get color picker element ID from color name
-function getColorPickerId(colorName) {
-    return `color${colorName.charAt(0).toUpperCase() + colorName.slice(1)}`;
+// Runs fn for each colour and mode with that mode's picker.
+function forEachColorPicker(fn) {
+    COLOR_NAMES.forEach(colorName => {
+        Object.keys(DEFAULTS_BY_MODE).forEach(mode => {
+            const picker = document.getElementById(getColorPickerId(colorName, mode));
+            if (picker) fn(picker, colorName, mode);
+        });
+    });
 }
 
 // Helper to safely get checkbox value with default
@@ -77,19 +84,6 @@ function updateAutoArchiveIdleMinutesVisibility(forceEnabled) {
     input.disabled = !isEnabled;
 }
 
-// Function to apply color overrides to CSS variables
-function applyColorOverrides(colorOverrides) {
-    const root = document.documentElement;
-    COLOR_NAMES.forEach(colorName => {
-        const colorValue = colorOverrides?.[colorName];
-        if (colorValue) {
-            root.style.setProperty(`--user-chrome-${colorName}-color`, colorValue);
-        } else {
-            root.style.removeProperty(`--user-chrome-${colorName}-color`);
-        }
-    });
-}
-
 // Function to save options to chrome.storage
 async function saveOptions() {
     const defaultSpaceNameSelect = document.getElementById('defaultSpaceName');
@@ -102,13 +96,11 @@ async function saveOptions() {
         return;
 
     // Collect color overrides (only non-default values)
-    const colorOverrides = {};
-    COLOR_NAMES.forEach(colorName => {
-        const colorPicker = document.getElementById(getColorPickerId(colorName));
-        if (colorPicker && colorPicker.value !== DEFAULT_COLORS[colorName]) {
-            colorOverrides[colorName] = colorPicker.value;
-        }
+    const picked = { light: {}, dark: {} };
+    forEachColorPicker((picker, colorName, mode) => {
+        picked[mode][colorName] = picker.value;
     });
+    const colors = buildColorOverrides(picked.light, picked.dark);
 
     const settings = {
         defaultSpaceName: defaultSpaceNameSelect?.value || 'Home',
@@ -122,7 +114,7 @@ async function saveOptions() {
         ),
         spaceSwitcherStyle: document.getElementById('spaceSwitcherStyle')?.value === 'names' ? 'names' : 'icons',
         pinMatchFullQueryHosts: parseHostList(document.getElementById('pinMatchFullQueryHosts')?.value),
-        colorOverrides: Object.keys(colorOverrides).length > 0 ? colorOverrides : null,
+        ...colors,
         debugLoggingEnabled: getCheckboxValue(document.getElementById('debugLoggingEnabled'), false)
     };
 
@@ -130,7 +122,7 @@ async function saveOptions() {
         await chrome.storage.sync.set(settings);
         Logger.log('Settings saved:', settings);
 
-        applyColorOverrides(settings.colorOverrides);
+        applyColorVariables(document.documentElement, settings);
         await chrome.runtime.sendMessage({ action: 'updateAutoArchiveSettings' });
         showToast();
     } catch (error) {
@@ -188,15 +180,12 @@ async function restoreOptions() {
     updateAutoArchiveIdleMinutesVisibility(settings.autoArchiveEnabled);
 
     // Restore color overrides
-    const colorOverrides = settings.colorOverrides || {};
-    COLOR_NAMES.forEach(colorName => {
-        const colorPicker = document.getElementById(getColorPickerId(colorName));
-        if (colorPicker) {
-            colorPicker.value = colorOverrides[colorName] || DEFAULT_COLORS[colorName];
-        }
+    const overrides = readColorOverrides(settings);
+    forEachColorPicker((picker, colorName, mode) => {
+        picker.value = overrides[mode][colorName] || DEFAULTS_BY_MODE[mode][colorName];
     });
 
-    applyColorOverrides(colorOverrides);
+    applyColorVariables(document.documentElement, settings);
 }
 
 // Function to populate the spaces dropdown
@@ -252,13 +241,14 @@ function setupAdvancedOptions() {
         });
     }
 
-    // Setup color reset buttons
+    // Setup color reset buttons: each resets one picker, light or dark
     document.querySelectorAll('.color-reset-btn').forEach(button => {
         button.addEventListener('click', () => {
-            const colorName = button.dataset.color;
-            const colorPicker = document.getElementById(getColorPickerId(colorName));
-            if (colorPicker && DEFAULT_COLORS[colorName]) {
-                colorPicker.value = DEFAULT_COLORS[colorName];
+            const { color: colorName, mode } = button.dataset;
+            const colorPicker = document.getElementById(getColorPickerId(colorName, mode));
+            const defaultColor = DEFAULTS_BY_MODE[mode]?.[colorName];
+            if (colorPicker && defaultColor) {
+                colorPicker.value = defaultColor;
                 saveOptions();
             }
         });
@@ -297,9 +287,7 @@ function setupAutoSave() {
     addListenerIfExists('pinMatchFullQueryHosts', 'input', debouncedSave);
 
     // Auto-save for color pickers (with debounce)
-    COLOR_NAMES.forEach(colorName => {
-        addListenerIfExists(getColorPickerId(colorName), 'input', debouncedSave);
-    });
+    forEachColorPicker(picker => picker.addEventListener('input', debouncedSave));
 }
 
 document.addEventListener('DOMContentLoaded', () => {

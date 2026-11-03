@@ -33,6 +33,8 @@
     --chrome-pink-color-dark: color-mix(in srgb, var(--chrome-pink-color) 75%, black);
     --chrome-purple-color-dark: color-mix(in srgb, var(--chrome-purple-color) 80%, black);
     --chrome-cyan-color-dark: color-mix(in srgb, var(--chrome-cyan-color) 80%, black);
+
+    --accent-blue: var(--chrome-blue-color);
 }
 
 body {
@@ -1455,7 +1457,7 @@ h3 {
 }
 
 .tab-title-input:focus {
-    outline: 1px solid var(--chrome-blue-color);
+    outline: 1px solid var(--accent-blue);
     /* Simple focus indicator */
     background-color: rgba(255, 255, 255, 0.5);
 }
@@ -2062,21 +2064,30 @@ h3 {
 }
 .color-overrides-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 2rem;
+    grid-template-columns: minmax(0, 1fr);
     margin-top: 1rem;
 }
 .color-override-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
     padding: 0.75rem 0;
     border-bottom: 1px solid var(--options-border-color);
 }
 .color-override-label {
     font-weight: 500;
-    cursor: pointer;
+}
+.color-override-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+}
+.color-mode-label {
+    min-width: 2.5rem;
+    font-size: 0.8125rem;
+    color: var(--options-text-color);
 }
 .color-picker-wrapper {
     display: flex;
@@ -2148,9 +2159,6 @@ h3 {
     .options-setting-field {
         grid-template-columns: minmax(0, 1fr);
         gap: 0.5rem;
-    }
-    .color-overrides-grid {
-        grid-template-columns: minmax(0, 1fr);
     }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2303,7 +2311,7 @@ h3 {
     top: 0;
     bottom: 0;
     width: 3px;
-    background-color: var(--chrome-blue-color);
+    background-color: var(--accent-blue);
     border-radius: 2px;
     z-index: 1000;
     box-shadow: 1px 0 3px rgba(0, 0, 0, 0.2);
@@ -2511,25 +2519,64 @@ h3 {
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
     :root {
-        /* In dark mode, use darker variants of user colors or fallback to dark defaults */
-        --chrome-grey-color: var(--user-chrome-grey-color, #546e7a);
-        --chrome-blue-color: var(--user-chrome-blue-color, #235d8b);
-        --chrome-red-color: var(--user-chrome-red-color, #963d3d);
-        --chrome-yellow-color: var(--user-chrome-yellow-color, #a38e54);
-        --chrome-green-color: var(--user-chrome-green-color, #4f8057);
-        --chrome-pink-color: var(--user-chrome-pink-color, #b06c92);
-        --chrome-purple-color: var(--user-chrome-purple-color, #8d75a1);
-        --chrome-cyan-color: var(--user-chrome-cyan-color, #5e9299);
+        /* Dark surfaces tinted with each space's colour. Only the user's dark values apply
+           here; a light override never reaches dark mode. */
+        --chrome-grey-color: var(--user-chrome-dark-grey-color, #252d30);
+        --chrome-blue-color: var(--user-chrome-dark-blue-color, #002b4a);
+        --chrome-red-color: var(--user-chrome-dark-red-color, #4f0a10);
+        --chrome-yellow-color: var(--user-chrome-dark-yellow-color, #403100);
+        --chrome-green-color: var(--user-chrome-dark-green-color, #003310);
+        --chrome-pink-color: var(--user-chrome-dark-pink-color, #54183e);
+        --chrome-purple-color: var(--user-chrome-dark-purple-color, #422159);
+        --chrome-cyan-color: var(--user-chrome-dark-cyan-color, #013d44);
 
-        /* Dark variants - auto-generated, darker in dark mode */
-        --chrome-grey-color-dark: color-mix(in srgb, var(--chrome-grey-color) 70%, black);
-        --chrome-blue-color-dark: color-mix(in srgb, var(--chrome-blue-color) 60%, black);
-        --chrome-red-color-dark: color-mix(in srgb, var(--chrome-red-color) 60%, black);
-        --chrome-yellow-color-dark: color-mix(in srgb, var(--chrome-yellow-color) 65%, black);
-        --chrome-green-color-dark: color-mix(in srgb, var(--chrome-green-color) 55%, black);
-        --chrome-pink-color-dark: color-mix(in srgb, var(--chrome-pink-color) 60%, black);
-        --chrome-purple-color-dark: color-mix(in srgb, var(--chrome-purple-color) 65%, black);
-        --chrome-cyan-color-dark: color-mix(in srgb, var(--chrome-cyan-color) 65%, black);
+        /* The hover and secondary shade: on a near-black surface black cannot make it
+           darker, so it mixes in white to stay visible with the light text still above 7:1. */
+        --chrome-grey-color-dark: color-mix(in srgb, var(--chrome-grey-color) 88%, white);
+        --chrome-blue-color-dark: color-mix(in srgb, var(--chrome-blue-color) 88%, white);
+        --chrome-red-color-dark: color-mix(in srgb, var(--chrome-red-color) 88%, white);
+        --chrome-yellow-color-dark: color-mix(in srgb, var(--chrome-yellow-color) 88%, white);
+        --chrome-green-color-dark: color-mix(in srgb, var(--chrome-green-color) 88%, white);
+        --chrome-pink-color-dark: color-mix(in srgb, var(--chrome-pink-color) 88%, white);
+        --chrome-purple-color-dark: color-mix(in srgb, var(--chrome-purple-color) 88%, white);
+        --chrome-cyan-color-dark: color-mix(in srgb, var(--chrome-cyan-color) 88%, white);
+
+        /* The drop bar and the rename outline need a blue that shows on the dark panel,
+           whatever the blue space colour is. */
+        --accent-blue: #235d8b;
+    }
+
+    /* The space-colour swatches show the dark override when there is one. */
+    .color-swatch[data-color='grey'] {
+        background-color: var(--user-chrome-dark-grey-color, #9ca3af);
+    }
+
+    .color-swatch[data-color='blue'] {
+        background-color: var(--user-chrome-dark-blue-color, #60a5fa);
+    }
+
+    .color-swatch[data-color='red'] {
+        background-color: var(--user-chrome-dark-red-color, #f87171);
+    }
+
+    .color-swatch[data-color='yellow'] {
+        background-color: var(--user-chrome-dark-yellow-color, #fbbf24);
+    }
+
+    .color-swatch[data-color='green'] {
+        background-color: var(--user-chrome-dark-green-color, #34d399);
+    }
+
+    .color-swatch[data-color='pink'] {
+        background-color: var(--user-chrome-dark-pink-color, #f472b6);
+    }
+
+    .color-swatch[data-color='purple'] {
+        background-color: var(--user-chrome-dark-purple-color, #a78bfa);
+    }
+
+    .color-swatch[data-color='cyan'] {
+        background-color: var(--user-chrome-dark-cyan-color, #22d3ee);
     }
 
     /* Dark mode text colors */
@@ -2853,12 +2900,22 @@ h3 {
         color: rgba(255, 255, 255, 0.5);
     }
 
+    /* A selected row is a lighter tint of the dark surface, with the light text kept;
+       the active tab is still the white row. */
     .tab.selected {
-        background: color-mix(in srgb, var(--space-bg-color, #555) 70%, white);
+        background: color-mix(in srgb, var(--space-bg-color, #555) 75%, white);
     }
 
     .tab.selected .tab-title-display {
-        color: #111;
+        color: #eceff1;
+    }
+
+    .tab.selected.active .tab-title-display {
+        color: #000000;
+    }
+
+    .search-result-space {
+        background: color-mix(in srgb, var(--result-space-color, #555) 80%, white);
     }
 
     .tab.merge-target {
