@@ -30,7 +30,7 @@ To try a build, open `chrome://extensions/`, turn on **Developer mode**, click *
 
 ## Lint and format
 
-- `npm run lint`: ESLint. It also enforces the folder boundaries in AGENTS.md: a context imports only its own folder and `src/shared/`. CI fails on errors; warnings mark older code to tidy when you next touch it.
+- `npm run lint`: ESLint. It also enforces the folder boundaries in AGENTS.md: a context imports only its own folder and `src/shared/`. CI fails on errors. The files that had warnings when linting was added keep them as warnings, listed in `eslint.config.js`, to tidy when you next touch them; anywhere else they are errors.
 - `npm run format`: Prettier for JavaScript and CSS (`npm run format:check` is what CI runs). Page markup, JSON, Markdown and YAML are formatted by hand.
 - One commit reformatted the whole codebase. To keep `git blame` useful, run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once.
 
