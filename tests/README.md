@@ -12,11 +12,10 @@ npm test
 npm run test:spaces      # Test space management
 npm run test:tabs        # Test tab management
 npm run test:bookmarks   # Test pinned tabs/bookmarks
-npm run test:spotlight   # Test spotlight search
 npm run test:drag        # Test drag-and-drop
 
 # Run tests with visible browser (non-headless)
-npm run test:e2e:headed
+HEADED=true npm run test:e2e
 
 # Watch mode for development
 npm run test:e2e:watch
@@ -30,16 +29,18 @@ tests/
 │   ├── helpers/
 │   │   ├── extension-helper.js    # Extension-specific utilities
 │   │   └── test-utils.js          # Common test utilities
-│   ├── fixtures/                   # Test data and fixtures
-│   ├── screenshots/                # Test failure screenshots
+│   ├── screenshots/                # Test failure screenshots (not committed)
 │   ├── spaces.test.js             # Space management tests
 │   ├── tabs.test.js               # Tab management tests
 │   ├── bookmarks.test.js          # Bookmark/pinned tab tests
-│   ├── spotlight.test.js          # Spotlight search tests
 │   ├── drag-drop.test.js          # Drag and drop tests
+│   ├── upgrade.test.js            # Updating from the latest release keeps user data
+│   ├── *.test.js                  # Other feature suites
 │   ├── setup.js                   # Per-suite setup
 │   ├── global-setup.js            # Global setup
 │   └── global-teardown.js         # Global teardown
+├── manual/                         # Checklists for a hands-on pass in Chrome
+├── unit/                           # Unit tests (node:test), run with npm run test:unit
 └── README.md                       # This file
 ```
 
@@ -65,16 +66,6 @@ tests/
 - Pinned tabs display
 - Space bookmark management
 - Bookmark persistence
-
-### Spotlight Search (`spotlight.test.js`)
-- Spotlight activation (Alt+L, Alt+T)
-- Tab search
-- Bookmark search
-- History search
-- Search suggestions
-- Keyboard navigation (arrow keys, Enter, Escape)
-- Result selection
-- Search debouncing
 
 ### Drag and Drop (`drag-drop.test.js`)
 - Tab dragging and reordering
@@ -186,8 +177,9 @@ test('should create a new space', async () => {
 
 ### Environment Variables
 
-- `HEADLESS` - Run tests in headless mode (default: `true`)
-- `EXTENSION_PATH` - Path to built extension (default: `./dist`)
+- `HEADED=true` (or `DEBUG=true`) - Show the browser instead of running headless
+- `SIDECOVE_TEST_EXTENSION_PATH` - Path to the built extension for suites that launch through `launchBrowserWithExtension()` (default: `./dist`). `global-setup.js` and `upgrade.test.js` always use `./dist`.
+- `SIDECOVE_PREVIOUS_BUILD` - `dist/` folders of earlier releases for `upgrade.test.js`, separated by the path delimiter (`:` on macOS and Linux, `;` on Windows)
 - `CI` - Running in CI environment
 
 ### Jest Configuration
@@ -199,7 +191,7 @@ See `jest.config.js` in project root for Jest settings.
 ### Run Tests with Visible Browser
 
 ```bash
-npm run test:e2e:headed
+HEADED=true npm run test:e2e
 ```
 
 ### Run Single Test File
@@ -219,8 +211,8 @@ Failed tests automatically save screenshots to `tests/e2e/screenshots/`.
 ## 📊 CI/CD Integration
 
 Tests run automatically on GitHub Actions:
-- On push to `main` and `develop` branches
-- On pull requests
+- On push to `main`
+- On every pull request
 - Can be triggered manually via `workflow_dispatch`
 
 See `.github/workflows/e2e-tests.yml` for CI configuration.
