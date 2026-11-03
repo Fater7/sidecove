@@ -218,5 +218,5 @@ export function registerAutoArchive(spaceStore) {
         }
     });
 
-    return { updateTabLastActivity, removeTabLastActivity, setupAutoArchiveAlarm, runAutoArchiveCheck };
+    return { removeTabLastActivity, setupAutoArchiveAlarm };
 }
