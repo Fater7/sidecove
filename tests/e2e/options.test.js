@@ -27,6 +27,8 @@ describe('Options Page', () => {
     beforeEach(async () => {
         logTestStep('Opening options page...');
         optionsPage = await openOptionsPage(browser, extensionId);
+        // A background tab draws no frames, so clicking a control below the fold would wait forever.
+        await optionsPage.bringToFront();
         // Allow options.js DOMContentLoaded + restoreOptions to finish
         await delay(1500);
     });

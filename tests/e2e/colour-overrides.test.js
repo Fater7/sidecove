@@ -162,6 +162,8 @@ test('the sidebar background follows a change of system theme without a reload',
 
 test('Settings shows a Light and a Dark picker for each colour, each with its own Reset', async () => {
     const page = await openOptionsPage(browser, extensionId);
+    // A background tab draws no frames, so clicking a Reset below the fold would wait forever.
+    await page.bringToFront();
     try {
         await page.evaluate(() => chrome.storage.sync.set({ colorOverrides: null, colorOverridesDark: null }));
         await page.reload();
