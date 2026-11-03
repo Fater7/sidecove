@@ -879,10 +879,11 @@ h3 {
     text-align: center;
 }
 
-/* Toast notification for URL copy success. Fixed, like the undo toast, so it needs no anchor row. */
+/* Toast notification for URL copy success. Fixed, and above the undo toast's spot so the two
+   never overlap. */
 .url-copy-toast {
     position: fixed;
-    bottom: 64px;
+    bottom: 112px;
     left: 50%;
     transform: translateX(-50%);
     background-color: rgb(0, 0, 0);
