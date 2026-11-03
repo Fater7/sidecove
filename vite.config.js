@@ -54,11 +54,8 @@ export default defineConfig(({ mode }) => {
       target: 'es2020',
       minify: !isDev,
       sourcemap: isDev,
-      ...(isDev && {
-        watch: {
-          include: ['src/**/*.js', 'src/**/*.html', 'src/**/*.css', 'public/**', 'manifest.json', 'LICENSE', '*.md']
-        }
-      })
+      // The static-copy plugin adds the files outside the module graph to the watch.
+      ...(isDev && { watch: {} })
     },
     plugins: [staticCopy()],
   };
