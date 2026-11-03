@@ -20,6 +20,46 @@ import { Logger } from './logger.js';
 const MAX_ARCHIVED_TABS = 100;
 const ARCHIVED_TABS_KEY = 'archivedTabs';
 
+// Hosts whose pinned-tab URL key keeps the query string. Some apps use the query
+// string as the page's identity (e.g. localhost:6969/?focused=<chat id>, one
+// pinned tab per chat), which the default origin+pathname key collapses into a
+// single pinned entry. Cached because getPinnedUrlKey is synchronous; refreshed
+// from chrome.storage.sync on change.
+let pinMatchFullQueryHosts = [];
+
+// Reduce a typed or pasted entry ("localhost:6969", "http://localhost:6969/",
+// "example.com:443") to the URL.host form getPinnedUrlKey compares against, or
+// null when it is not a host. Shared by the options page and the cache refresh.
+export function normalizePinMatchHost(entry) {
+    const text = String(entry ?? '').trim();
+    if (!text) return null;
+    // A bare entry has no scheme; read an explicit :443 as https so URL.host drops it.
+    const scheme = /:443(\/|$)/.test(text) ? 'https' : 'http';
+    try {
+        return new URL(text.includes('://') ? text : `${scheme}://${text}`).host || null;
+    } catch {
+        return null;
+    }
+}
+
+export async function refreshPinMatchFullQueryHosts() {
+    try {
+        const result = await chrome.storage.sync.get({ pinMatchFullQueryHosts: [] });
+        if (Array.isArray(result.pinMatchFullQueryHosts)) {
+            pinMatchFullQueryHosts = result.pinMatchFullQueryHosts.map(normalizePinMatchHost).filter(Boolean);
+        }
+    } catch {
+        // Storage unavailable (unit tests, offscreen contexts); keep the cached list.
+    }
+}
+
+if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+    refreshPinMatchFullQueryHosts();
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'sync' && changes.pinMatchFullQueryHosts) refreshPinMatchFullQueryHosts();
+    });
+}
+
 const Utils = {
 
     async focusTab(tabId) {
@@ -72,12 +112,18 @@ const Utils = {
 
     // URL comparison key for pinned tabs:
     // intentionally ignore query params + hash to avoid treating benign changes (e.g. Google Docs) as "navigated away".
+    // Hosts listed in the pinMatchFullQueryHosts setting keep their query string,
+    // because for them the query string is the page's identity.
     getPinnedUrlKey: function (url) {
         if (!url) return '';
         // Each local lesson/run is a distinct practice tab, even though it shares a page.
         if (isPracticeUrl(url)) return url;
         try {
             const u = new URL(url);
+            // A bare hostname entry matches any port on that host.
+            if (pinMatchFullQueryHosts.includes(u.host) || pinMatchFullQueryHosts.includes(u.hostname)) {
+                return `${u.origin}${u.pathname}${u.search}`;
+            }
             return `${u.origin}${u.pathname}`;
         } catch {
             // Fallback for non-standard URLs
@@ -96,6 +142,7 @@ const Utils = {
             debugLoggingEnabled: false, // Default: disabled (controls debug logging)
             showAllOpenTabsInCollapsedFolders: false, // Default: Arc behavior (only show active tab in collapsed folder)
             spaceSwitcherStyle: 'icons', // Default: Arc behavior (icons, or a dot for a space without one); 'names' shows full names
+            pinMatchFullQueryHosts: [], // Default: none (pinned URL keys ignore query strings, as before)
         };
         const result = await chrome.storage.sync.get(defaultSettings);
         Logger.log("Retrieved settings:", result);

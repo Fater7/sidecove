@@ -12,7 +12,7 @@
  * - Provides real-time feedback for setting changes
  */
 
-import { Utils } from './utils.js';
+import { Utils, normalizePinMatchHost } from './utils.js';
 import { LocalStorage } from './localstorage.js';
 import { Logger } from './logger.js';
 
@@ -45,6 +45,16 @@ function setCheckboxValue(element, value, defaultValue) {
   if (element) {
     element.checked = value !== undefined ? value : defaultValue;
   }
+}
+
+// Parse the pinned-tab-matching host list: comma or whitespace separated,
+// optional :port (e.g. "localhost:6969, docs.corp.example.com"). Pasted URLs are
+// reduced to their host; entries that are not a host are dropped.
+function parseHostList(value) {
+  return (value || '')
+    .split(/[\s,]+/)
+    .map(normalizePinMatchHost)
+    .filter(Boolean);
 }
 
 // Helper to add event listener if element exists
@@ -103,6 +113,7 @@ async function saveOptions() {
     invertTabOrder: getCheckboxValue(document.getElementById('invertTabOrder'), true),
     showAllOpenTabsInCollapsedFolders: getCheckboxValue(document.getElementById('showAllOpenTabsInCollapsedFolders'), false),
     spaceSwitcherStyle: document.getElementById('spaceSwitcherStyle')?.value === 'names' ? 'names' : 'icons',
+    pinMatchFullQueryHosts: parseHostList(document.getElementById('pinMatchFullQueryHosts')?.value),
     colorOverrides: Object.keys(colorOverrides).length > 0 ? colorOverrides : null,
     debugLoggingEnabled: getCheckboxValue(document.getElementById('debugLoggingEnabled'), false)
   };
@@ -150,6 +161,12 @@ async function restoreOptions() {
   setCheckboxValue(document.getElementById('debugLoggingEnabled'), settings.debugLoggingEnabled, false);
   const spaceSwitcherStyle = document.getElementById('spaceSwitcherStyle');
   if (spaceSwitcherStyle) spaceSwitcherStyle.value = settings.spaceSwitcherStyle === 'names' ? 'names' : 'icons';
+
+  // Restore pinned-tab-matching host list
+  const pinMatchFullQueryHostsInput = document.getElementById('pinMatchFullQueryHosts');
+  if (pinMatchFullQueryHostsInput) {
+    pinMatchFullQueryHostsInput.value = (settings.pinMatchFullQueryHosts || []).join(', ');
+  }
 
   // Restore number input
   const autoArchiveIdleMinutesInput = document.getElementById('autoArchiveIdleMinutes');
@@ -262,6 +279,9 @@ function setupAutoSave() {
 
   // Auto-save for number input (with debounce)
   addListenerIfExists('autoArchiveIdleMinutes', 'input', debouncedSave);
+
+  // Auto-save for the pinned-tab-matching host list (with debounce)
+  addListenerIfExists('pinMatchFullQueryHosts', 'input', debouncedSave);
 
   // Auto-save for color pickers (with debounce)
   COLOR_NAMES.forEach(colorName => {
