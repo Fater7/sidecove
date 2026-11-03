@@ -391,7 +391,10 @@ test('New Tab sits under the divider, above the open tabs, once in each space', 
     await page.waitForSelector(`.space.active .tab[data-tab-id="${tabId}"]`);
     const layout = await page.evaluate(id => {
         const space = document.querySelector('.space.active');
-        const rect = el => el.getBoundingClientRect();
+        const rect = el => {
+            const { top, bottom } = el.getBoundingClientRect();
+            return { top, bottom };
+        };
         const tab = space.querySelector(`.tab[data-tab-id="${id}"]`);
         return {
             rows: space.querySelectorAll('.new-tab-btn').length,

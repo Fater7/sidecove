@@ -59,7 +59,13 @@ test('favorites hidden by collapsing the Favorites section cannot be clicked or 
     );
     expect(hits).toEqual(spots.map(() => false));
     const before = await tabCount();
-    for (const { x, y } of spots) await page.mouse.click(x, y);
+    // The New Tab row now sits where the collapsed section's rows were, and clicking it is meant
+    // to open a tab, so click only the spots that are not the row.
+    const onNewTab = await page.evaluate(
+        spots => spots.map(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest('.new-tab-btn'))),
+        spots
+    );
+    for (const [i, { x, y }] of spots.entries()) if (!onNewTab[i]) await page.mouse.click(x, y);
     await sleep(800);
     expect(await tabCount()).toBe(before);
 
