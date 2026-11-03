@@ -32,6 +32,13 @@ trap cleanup EXIT
 
 echo "==> Making sure Puppeteer's Chrome for Testing is downloaded"
 npx puppeteer browsers install chrome
+# An interrupted download can leave a folder that counts as installed but cannot start, which
+# would fail every test within seconds.
+CHROME="$(node -e 'import("puppeteer").then(p => console.log(p.default.executablePath()))')"
+if ! "$CHROME" --version >/dev/null 2>&1; then
+  echo "Puppeteer's Chrome at $CHROME does not start. Delete its version folder under the Puppeteer cache (PUPPETEER_CACHE_DIR, default ~/.cache/puppeteer) and run this again." >&2
+  exit 1
+fi
 
 # The workflow asks GitHub for the latest release. Releases are tagged vX.Y.Z, so the highest
 # local tag is the fallback when gh cannot answer.
