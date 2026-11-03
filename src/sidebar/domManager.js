@@ -498,7 +498,7 @@ export async function showArchivedTabsPopup(activeSpaceId) {
             const favicon = document.createElement('img');
             favicon.src = Utils.getFaviconUrl(archivedTab.url);
             favicon.className = 'tab-favicon';
-            favicon.onerror = () => { favicon.src = 'assets/default_icon.png'; };
+            favicon.onerror = () => { favicon.src = '/assets/default_icon.png'; };
 
             const details = document.createElement('div');
             details.className = 'tab-details';
