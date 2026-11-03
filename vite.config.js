@@ -8,55 +8,55 @@ import { staticCopy } from './scripts/vite-static-copy.js';
 const srcDir = resolve(process.cwd(), 'src');
 
 const inputs = {
-  sidebar: resolve(srcDir, 'sidebar.html'),
-  'tutorial-practice': resolve(srcDir, 'tutorial-practice.html'),
-  options: resolve(srcDir, 'options.html'),
-  'installation-onboarding': resolve(srcDir, 'installation-onboarding.html'),
-  background: resolve(srcDir, 'background/background.js'),
-  'sidebar-script': resolve(srcDir, 'sidebar/sidebar.js'),
-  'options-script': resolve(srcDir, 'options/options.js'),
-  'installation-onboarding-script': resolve(srcDir, 'onboarding/installation-onboarding.js'),
-  offscreen: resolve(srcDir, 'offscreen.html'),
+    sidebar: resolve(srcDir, 'sidebar.html'),
+    'tutorial-practice': resolve(srcDir, 'tutorial-practice.html'),
+    options: resolve(srcDir, 'options.html'),
+    'installation-onboarding': resolve(srcDir, 'installation-onboarding.html'),
+    background: resolve(srcDir, 'background/background.js'),
+    'sidebar-script': resolve(srcDir, 'sidebar/sidebar.js'),
+    'options-script': resolve(srcDir, 'options/options.js'),
+    'installation-onboarding-script': resolve(srcDir, 'onboarding/installation-onboarding.js'),
+    offscreen: resolve(srcDir, 'offscreen.html')
 };
 
 // Entry scripts keep fixed names at the top of dist/: the manifest points at background.js.
 const entryNames = {
-  background: 'background.js',
-  'sidebar-script': 'sidebar.js',
-  'options-script': 'options.js',
-  'installation-onboarding-script': 'installation-onboarding.js',
+    background: 'background.js',
+    'sidebar-script': 'sidebar.js',
+    'options-script': 'options.js',
+    'installation-onboarding-script': 'installation-onboarding.js'
 };
 
 // The development build has the production layout without the hashes. Other chunks stay in
 // assets/, where an HTML page's chunk cannot take an entry script's name, such as sidebar.js.
 function output(isDev) {
-  const name = isDev ? 'assets/[name]' : 'assets/[name]-[hash]';
-  return {
-    entryFileNames: chunk => entryNames[chunk.name] || `${name}.js`,
-    chunkFileNames: `${name}.js`,
-    assetFileNames: asset => {
-      if (asset.name?.endsWith('.css') || asset.name?.endsWith('.html')) return '[name][extname]';
-      return `${name}[extname]`;
-    }
-  };
+    const name = isDev ? 'assets/[name]' : 'assets/[name]-[hash]';
+    return {
+        entryFileNames: chunk => entryNames[chunk.name] || `${name}.js`,
+        chunkFileNames: `${name}.js`,
+        assetFileNames: asset => {
+            if (asset.name?.endsWith('.css') || asset.name?.endsWith('.html')) return '[name][extname]';
+            return `${name}[extname]`;
+        }
+    };
 }
 
 export default defineConfig(({ mode }) => {
-  const isDev = mode === 'development';
-  const outDir = isDev ? 'dist-dev' : 'dist';
-  return {
-    root: srcDir,
-    publicDir: resolve(process.cwd(), 'public'),
-    build: {
-      outDir: resolve(process.cwd(), outDir),
-      emptyOutDir: true,
-      rollupOptions: { input: inputs, output: output(isDev) },
-      target: 'es2020',
-      minify: !isDev,
-      sourcemap: isDev,
-      // The static-copy plugin adds the files outside the module graph to the watch.
-      ...(isDev && { watch: {} })
-    },
-    plugins: [staticCopy()],
-  };
+    const isDev = mode === 'development';
+    const outDir = isDev ? 'dist-dev' : 'dist';
+    return {
+        root: srcDir,
+        publicDir: resolve(process.cwd(), 'public'),
+        build: {
+            outDir: resolve(process.cwd(), outDir),
+            emptyOutDir: true,
+            rollupOptions: { input: inputs, output: output(isDev) },
+            target: 'es2020',
+            minify: !isDev,
+            sourcemap: isDev,
+            // The static-copy plugin adds the files outside the module graph to the watch.
+            ...(isDev && { watch: {} })
+        },
+        plugins: [staticCopy()]
+    };
 });

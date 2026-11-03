@@ -19,7 +19,9 @@ if (!previousBuilds.length && process.env.CI) {
     throw new Error('SIDECOVE_PREVIOUS_BUILD is empty in CI: the workflow did not build any earlier release.');
 }
 if (!previousBuilds.length) {
-    console.warn(`SIDECOVE_PREVIOUS_BUILD is not set, so this relabels the current build as ${FALLBACK_PREVIOUS_VERSION} instead of installing a release.`);
+    console.warn(
+        `SIDECOVE_PREVIOUS_BUILD is not set, so this relabels the current build as ${FALLBACK_PREVIOUS_VERSION} instead of installing a release.`
+    );
 }
 
 const parts = version => version.split('.').map(Number);
@@ -36,7 +38,9 @@ const newer = (a, b) => {
 const updateVersion = previous => {
     if (newer(currentVersion, previous)) return currentVersion;
     if (newer(previous, currentVersion)) {
-        throw new Error(`This build (${currentVersion}) is older than release ${previous}; update the branch from main.`);
+        throw new Error(
+            `This build (${currentVersion}) is older than release ${previous}; update the branch from main.`
+        );
     }
     const next = parts(previous);
     if (next.length < 4) next.push(1);
@@ -118,9 +122,21 @@ test.each(cases)('a profile from %s keeps its spaces, favorites and settings aft
             const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
             const work = spaces.find(space => space.name === 'Work');
             const folder = await chrome.bookmarks.create({ parentId: work.bookmarkFolderId, title: 'Projects' });
-            await chrome.bookmarks.create({ parentId: folder.id, title: 'Roadmap', url: 'https://example.com/roadmap' });
-            await chrome.bookmarks.create({ parentId: work.bookmarkFolderId, title: 'Docs', url: 'https://example.com/docs' });
-            await chrome.storage.sync.set({ defaultSpaceName: 'Work', autoArchiveEnabled: true, autoArchiveIdleMinutes: 90 });
+            await chrome.bookmarks.create({
+                parentId: folder.id,
+                title: 'Roadmap',
+                url: 'https://example.com/roadmap'
+            });
+            await chrome.bookmarks.create({
+                parentId: work.bookmarkFolderId,
+                title: 'Docs',
+                url: 'https://example.com/docs'
+            });
+            await chrome.storage.sync.set({
+                defaultSpaceName: 'Work',
+                autoArchiveEnabled: true,
+                autoArchiveIdleMinutes: 90
+            });
         });
         before = await snapshot(page);
         expect(before.spaces.map(space => space.name)).toEqual(expect.arrayContaining(['Home', 'Work']));

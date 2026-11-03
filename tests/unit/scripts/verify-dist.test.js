@@ -14,7 +14,11 @@ function build(files) {
     return root;
 }
 
-const manifest = JSON.stringify({ background: { service_worker: 'background.js' }, side_panel: { default_path: 'sidebar.html' }, icons: { 128: 'assets/icon.png' } });
+const manifest = JSON.stringify({
+    background: { service_worker: 'background.js' },
+    side_panel: { default_path: 'sidebar.html' },
+    icons: { 128: 'assets/icon.png' }
+});
 
 test('a build whose references all resolve passes', () => {
     const root = build({
@@ -22,7 +26,8 @@ test('a build whose references all resolve passes', () => {
         'background.js': 'chrome.runtime.getURL("offscreen.html"); chrome.tabs.create({url:"sidebar.html"})',
         'offscreen.html': '<script type="module" src="/assets/offscreen-abc.js"></script>',
         'assets/offscreen-abc.js': 'new URL(chrome.runtime.getURL("/_favicon/"))',
-        'sidebar.html': '<link rel="stylesheet" href="/styles.css"><a href="https://example.com">x</a><a href="#top">top</a>',
+        'sidebar.html':
+            '<link rel="stylesheet" href="/styles.css"><a href="https://example.com">x</a><a href="#top">top</a>',
         'styles.css': '@font-face { src: url("/assets/font.ttf") } .x { background: url(data:image/png;base64,AAAA) }',
         'assets/font.ttf': '',
         'assets/icon.png': ''
@@ -32,10 +37,14 @@ test('a build whose references all resolve passes', () => {
 
 test('missing files are reported from the manifest, pages, stylesheets and scripts', () => {
     const root = build({
-        'manifest.json': JSON.stringify({ background: { service_worker: 'background.js' }, options_page: 'options.html', icons: { 128: 'assets/icon.png' } }),
+        'manifest.json': JSON.stringify({
+            background: { service_worker: 'background.js' },
+            options_page: 'options.html',
+            icons: { 128: 'assets/icon.png' }
+        }),
         'background.js': 'img.src = "assets/default_icon.png"; chrome.tabs.create({url:"welcome.html?replay=1"})',
         'sidebar.html': '<script src="onboarding-script.js"></script>',
-        'styles.css': '@font-face { src: url(\'assets/font.ttf\') }'
+        'styles.css': "@font-face { src: url('assets/font.ttf') }"
     });
     assert.deepEqual(findMissing(root).sort(), [
         'background.js -> assets/default_icon.png',
@@ -49,9 +58,13 @@ test('missing files are reported from the manifest, pages, stylesheets and scrip
 
 test('module imports resolve against the importing chunk, and each missing path is reported once', () => {
     const root = build({
-        'manifest.json': JSON.stringify({ background: { service_worker: 'background.js' }, action: { default_icon: 'assets/icon.png' } }),
+        'manifest.json': JSON.stringify({
+            background: { service_worker: 'background.js' },
+            action: { default_icon: 'assets/icon.png' }
+        }),
         'assets/icon.png': '',
-        'background.js': 'import{a}from"./assets/state-abc.js";import"./assets/gone.js";chrome.runtime.getURL("gone.html");chrome.tabs.create({url:"gone.html"})',
+        'background.js':
+            'import{a}from"./assets/state-abc.js";import"./assets/gone.js";chrome.runtime.getURL("gone.html");chrome.tabs.create({url:"gone.html"})',
         'assets/state-abc.js': 'import{b}from"./shared-def.js";export const a=import("./lazy-ghi.js")',
         'assets/shared-def.js': 'export const b=1'
     });
