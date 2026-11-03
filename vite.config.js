@@ -27,13 +27,16 @@ const entryNames = {
   'installation-onboarding-script': 'installation-onboarding.js',
 };
 
+// The development build has the production layout without the hashes. Other chunks stay in
+// assets/, where an HTML page's chunk cannot take an entry script's name, such as sidebar.js.
 function output(isDev) {
+  const name = isDev ? 'assets/[name]' : 'assets/[name]-[hash]';
   return {
-    entryFileNames: chunk => entryNames[chunk.name] || (isDev ? '[name].js' : 'assets/[name]-[hash].js'),
-    chunkFileNames: isDev ? '[name].js' : 'assets/[name]-[hash].js',
+    entryFileNames: chunk => entryNames[chunk.name] || `${name}.js`,
+    chunkFileNames: `${name}.js`,
     assetFileNames: asset => {
       if (asset.name?.endsWith('.css') || asset.name?.endsWith('.html')) return '[name][extname]';
-      return isDev ? '[name][extname]' : 'assets/[name]-[hash][extname]';
+      return `${name}[extname]`;
     }
   };
 }
@@ -52,7 +55,9 @@ export default defineConfig(({ mode }) => {
       minify: !isDev,
       sourcemap: isDev,
       ...(isDev && {
-        watch: { include: ['src/**/*.js', 'src/**/*.html', 'src/**/*.css', 'public/**', 'manifest.json'] }
+        watch: {
+          include: ['src/**/*.js', 'src/**/*.html', 'src/**/*.css', 'public/**', 'manifest.json', 'LICENSE', '*.md']
+        }
       })
     },
     plugins: [staticCopy()],
