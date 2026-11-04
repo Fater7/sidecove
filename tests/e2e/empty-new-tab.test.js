@@ -73,7 +73,7 @@ test('the "+ New Tab" row works the same way', async () => {
     await page.bringToFront();
     const before = await evaluate(async () => (await chrome.tabs.query({})).map(t => t.id));
     await page.waitForSelector('.space.active .new-tab-btn');
-    await page.click('.space.active .new-tab-btn');
+    await page.$eval('.space.active .new-tab-btn', button => button.click());
     await page.waitForFunction(
         async before =>
             (await chrome.tabs.query({})).some(t => !before.includes(t.id) && /^chrome:\/\/new/.test(t.url)),
