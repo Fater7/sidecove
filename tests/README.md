@@ -210,12 +210,9 @@ Failed tests automatically save screenshots to `tests/e2e/screenshots/`.
 
 ## 📊 CI/CD Integration
 
-Tests run automatically on GitHub Actions:
-- On push to `main`
-- On every pull request
-- Can be triggered manually via `workflow_dispatch`
+The suite runs locally with `npm run test:e2e:local` before a pull request is opened or updated, with its result in the PR description. The workflow can still be started by hand (`workflow_dispatch`).
 
-See `.github/workflows/e2e-tests.yml` for CI configuration.
+See `.github/workflows/e2e-tests.yml` for the workflow.
 
 ## 🔍 Troubleshooting
 
