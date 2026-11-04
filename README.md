@@ -49,30 +49,34 @@ An unpacked copy is a separate extension from the store version: Chrome gives it
 We use GitHub Issues to track bugs and feature requests. Before creating a new issue:
 
 1. Search existing issues to avoid duplicates
-2. Use our issue templates when available
+2. Use our issue templates: choose "Bug Report" or "Feature Request" when you click "New Issue"
 
 ### Reporting Bugs 🐛
 
 1. Go to the [Issues](https://github.com/matthewmoorcroft/sidecove/issues) page
 2. Click "New Issue"
-3. Choose "Bug Report" template if available
+3. Choose the "Bug Report" template
 4. Include:
    - Clear description of the bug
    - Steps to reproduce
    - Expected vs actual behavior
-   - Browser version and OS
-   - Screenshots if applicable
+   - Sidecove version, Chrome version and OS
+   - The settings that could matter, such as "Show new tabs at the top" and "Sync spaces to Chrome tab groups"
+   - Screenshots or a short video if applicable
 
 ### Feature Requests 💡
 
 1. Go to the [Issues](https://github.com/matthewmoorcroft/sidecove/issues) page
 2. Click "New Issue"
-3. Choose "Feature Request" template if available
-4. Include:
+3. Choose the "Feature Request" template
+4. Tick the box saying you understand the permissions rule below
+5. Include:
    - Clear description of the feature
    - Use cases
    - Potential implementation ideas (optional)
    - Mock-ups or examples (if applicable)
+
+Sidecove only adds features that work with the permissions it has today. It can see your tabs' titles and addresses, use the side panel, save settings, keep spaces and favorites in a Sidecove bookmarks folder, run a timer for auto-archive, show tab icons and copy a tab's address. It has no access to websites, no content scripts and no network access. A request that needs more than this cannot be done and will be closed as not possible.
 
 ## Contributing
 
