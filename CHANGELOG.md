@@ -18,6 +18,7 @@
 - **Easier to find from Arc:** Sidecove's name and description now say it brings Arc-style spaces, pinned tabs and favourites to Chrome for people moving from Arc, and the Chrome Web Store text says it is not made by or affiliated with The Browser Company. The longer name also shows in Chrome's extensions page and menus. Nothing else in the extension changed: no permission, feature or behaviour.
 - **End-to-end tests run on the laptop, not in CI:** `npm run test:e2e:local` builds the earlier releases for the upgrade test, runs the suite with Puppeteer's own Chrome and prints one line to paste into the pull request, whose template now asks for it. Users will not notice any change.
 - **Closing a tab keeps you in your space:** when you close the tab you are on, Sidecove now stays in the same space and shows the next tab down its list (the one above if you closed the last), as Arc does. Before, Chrome could pick a tab from another space, such as the one you had come from, and Sidecove followed it there. If the space has no other tab, it opens a New Tab in that space. Clicking a tab of another space still switches to it. It needs no new permission.
+- **Next and previous tab in space now follow the order you see (issue #5):** with "Show new tabs at the top" on, the two shortcuts walked the open tabs in the opposite direction to the panel. They now go down and up the list as it is shown, favorites first, whichever way new tabs are listed and whether or not spaces sync to Chrome tab groups. No new permission.
 
 ## 1.2.0
 
