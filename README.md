@@ -26,13 +26,23 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 ## Install
 
+Install Sidecove from the [Chrome Web Store](https://chromewebstore.google.com/detail/sidecove/gaiffdmopglchnjigmifboiikpaappdo). This is the way to install it, and the store keeps it up to date for you.
+
+Sidecove needs Chrome 116 or later, for the side panel features it uses.
+
+## Install for development or testing
+
+Only needed if you want to try an unreleased change, test a release before it reaches the store, or work on the code. Everyone else should use the store.
+
 1. Download `sidecove-extension.zip` from the latest [GitHub release](https://github.com/matthewmoorcroft/sidecove/releases/latest) and unzip it.
 2. Open `chrome://extensions/` and turn on **Developer mode** (top right).
 3. Click **Load unpacked** and choose the unzipped folder.
 
 To update, unzip the new release over the same folder and click the reload icon on the Sidecove card in `chrome://extensions/`. Chrome identifies an unpacked extension by its folder, so loading a copy from a new folder starts with empty spaces and settings.
 
-Sidecove needs Chrome 116 or later, for the side panel features it uses.
+To build and load from source instead, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+An unpacked copy is a separate extension from the store version: Chrome gives it its own id, so it has its own settings and its own record of which tabs belong to which space. Both read and write the same `Sidecove` bookmarks folder in your profile, so pinned tabs and favorites would show in both. Settings and space records do not carry over from one copy to the other. Running both at once is not recommended; turn one off in `chrome://extensions/` first.
 
 ## Issues and Feature Requests
 
