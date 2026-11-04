@@ -28,82 +28,149 @@ test('nothing is chosen when no other tab is open, or the closed tab is not in t
     assert.equal(pickTabAfterClose([1, 2], 9, always), undefined);
 });
 
-// Space A is shown and holds tabs 1, 2, 3 (top to bottom); space B holds 10.
-function setUp({ open = [1, 2, 3, 10], activeSpaceId = 'A' } = {}) {
+// Space A is shown and holds tabs 1, 2, 3 (top to bottom); space B holds 10. Tab 2 is active.
+function setUp({ open = [1, 2, 3, 10], activeTab = 2, owners = { 1: 'A', 2: 'A', 3: 'A', 10: 'B' } } = {}) {
     const calls = [];
-    const owners = { 1: 'A', 2: 'A', 3: 'A', 10: 'B' };
+    let active = activeTab;
     const focus = createCloseFocus({
-        getActiveSpaceId: () => activeSpaceId,
+        getActiveSpaceId: () => 'A',
+        getActiveTabId: () => active,
+        setActiveTabId: id => {
+            active = id;
+        },
         ownerOf: id => owners[id],
         displayedOrder: spaceId =>
             Object.keys(owners)
                 .map(Number)
                 .filter(id => owners[id] === spaceId),
+        tabExists: async id => open.includes(id),
         openTabIds: async () => open,
         activateTab: async id => calls.push(['activate', id]),
         openNewTab: async () => calls.push(['new tab']),
-        restoreLastTab: async (spaceId, tabId) => calls.push(['restore', spaceId, tabId])
+        restoreAfterPick: async (spaceId, pickedId, visitedId) => calls.push(['restore', spaceId, pickedId, visitedId])
     });
-    return { focus, calls, owners };
+    return { focus, calls, owners, active: () => active };
 }
 
 test('a close that made Chrome pick a tab of another space keeps the current space', async () => {
-    const { focus, calls } = setUp({ open: [1, 3, 10] });
+    const { focus, calls, active } = setUp({ open: [1, 3, 10] });
     // The activation event arrives before the close is handled.
-    const stayed = await focus.stayAfterClose({ previousTabId: 2, activatedTabId: 10, activatedSpaceId: 'B' });
-    assert.equal(stayed, true);
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), true);
     assert.deepEqual(calls, [
         ['activate', 3],
-        ['restore', 'B', 10]
+        ['restore', 'B', 10, undefined]
+    ]);
+    assert.equal(active(), 3);
+});
+
+test('the tab the user last visited in the other space is passed on to be restored', async () => {
+    const open = [1, 2, 3, 10, 11];
+    const { focus, calls } = setUp({ open, owners: { 1: 'A', 2: 'A', 3: 'A', 10: 'B', 11: 'B' } });
+    // Tab 10 of space B is visited on purpose, then the user returns to tab 2 of space A.
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), false);
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 2, activatedSpaceId: 'A' }), false);
+    // Closing tab 2 makes Chrome pick tab 11 of space B, which the user never visited.
+    open.splice(open.indexOf(2), 1);
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 11, activatedSpaceId: 'B' }), true);
+    assert.deepEqual(calls, [
+        ['activate', 3],
+        ['restore', 'B', 11, 10]
     ]);
 });
 
 test('the close handled first gives the same result, with the order the list had before the close', async () => {
-    const { focus, calls, owners } = setUp({ open: [1, 2, 10] });
+    const { focus, calls, owners } = setUp({ open: [1, 2, 10], activeTab: 3 });
     focus.noteRemoval(3);
     delete owners[3]; // the sidebar drops the closed tab from its list
-    const stayed = await focus.stayAfterClose({ previousTabId: 3, activatedTabId: 10, activatedSpaceId: 'B' });
-    assert.equal(stayed, true);
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), true);
     assert.deepEqual(calls[0], ['activate', 2]);
 });
 
+test('Chrome picking another tab of the same space is replaced by the next tab down the list', async () => {
+    const { focus, calls } = setUp({ open: [1, 3, 10] });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 1, activatedSpaceId: 'A' }), true);
+    assert.deepEqual(calls, [['activate', 3]]);
+});
+
+test('Chrome already picking the tab we would choose changes nothing', async () => {
+    const { focus, calls, active } = setUp({ open: [1, 3, 10] });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 3, activatedSpaceId: 'A' }), false);
+    assert.deepEqual(calls, []);
+    assert.equal(active(), 3);
+});
+
 test('closing the only tab of the space opens a New Tab there', async () => {
-    const { focus, calls, owners } = setUp({ open: [10] });
-    delete owners[2];
-    delete owners[3];
-    owners[1] = 'A';
-    const stayed = await focus.stayAfterClose({ previousTabId: 1, activatedTabId: 10, activatedSpaceId: 'B' });
-    assert.equal(stayed, true);
-    assert.deepEqual(calls, [['new tab'], ['restore', 'B', 10]]);
+    const { focus, calls } = setUp({ open: [10], activeTab: 1, owners: { 1: 'A', 10: 'B' } });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), true);
+    assert.deepEqual(calls, [['new tab'], ['restore', 'B', 10, undefined]]);
 });
 
 test('a tab of another space opened on purpose still switches to that space', async () => {
-    const { focus, calls } = setUp({ open: [1, 2, 3, 10] });
     // The tab that was active is still open.
-    assert.equal(await focus.stayAfterClose({ previousTabId: 2, activatedTabId: 10, activatedSpaceId: 'B' }), false);
+    const { focus, calls, active } = setUp({ open: [1, 2, 3, 10] });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), false);
+    assert.deepEqual(calls, []);
+    assert.equal(active(), 10);
+});
+
+test('a tab moved to another window is not a close', async () => {
+    const calls = [];
+    const moved = createCloseFocus({
+        getActiveSpaceId: () => 'A',
+        getActiveTabId: () => 2,
+        setActiveTabId: () => {},
+        ownerOf: id => ({ 1: 'A', 2: 'A', 3: 'A', 10: 'B' })[id],
+        displayedOrder: () => [1, 2, 3],
+        tabExists: async () => true, // still open, in the other window
+        openTabIds: async () => [1, 3, 10],
+        activateTab: async () => calls.push(['activate']),
+        openNewTab: async () => calls.push(['new tab']),
+        restoreAfterPick: async () => calls.push(['restore'])
+    });
+    assert.equal(await moved.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), false);
     assert.deepEqual(calls, []);
 });
 
-test('nothing changes when the activated tab is in the current space, or the previous tab was elsewhere', async () => {
-    const { focus, calls } = setUp({ open: [1, 3, 10] });
-    assert.equal(await focus.stayAfterClose({ previousTabId: 2, activatedTabId: 3, activatedSpaceId: 'A' }), false);
-    // The closed tab belonged to space B, which was not the one shown.
-    assert.equal(await focus.stayAfterClose({ previousTabId: 10, activatedTabId: 1, activatedSpaceId: 'A' }), false);
-    assert.equal(await focus.stayAfterClose({ previousTabId: null, activatedTabId: 10, activatedSpaceId: 'B' }), false);
+test('a close in a space that is not shown, or with no tab active before, is left alone', async () => {
+    const { focus, calls } = setUp({ open: [1, 2, 3], activeTab: 10 });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 1, activatedSpaceId: 'A' }), false);
+    const none = setUp({ activeTab: null });
+    assert.equal(await none.focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), false);
     assert.deepEqual(calls, []);
 });
 
 test("if the chosen tab cannot be shown, the usual switch to Chrome's pick goes ahead", async () => {
     const failing = createCloseFocus({
         getActiveSpaceId: () => 'A',
+        getActiveTabId: () => 2,
+        setActiveTabId: () => {},
         ownerOf: id => ({ 2: 'A', 3: 'A', 10: 'B' })[id],
         displayedOrder: () => [2, 3],
+        tabExists: async () => false,
         openTabIds: async () => [3, 10],
         activateTab: async () => {
             throw new Error('No tab with id');
         },
         openNewTab: async () => {},
-        restoreLastTab: async () => assert.fail('nothing was undone, so nothing is restored')
+        restoreAfterPick: async () => assert.fail('nothing was undone, so nothing is restored')
     });
-    assert.equal(await failing.stayAfterClose({ previousTabId: 2, activatedTabId: 10, activatedSpaceId: 'B' }), false);
+    assert.equal(await failing.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), false);
+});
+
+test('tabs closed together are handled one after another and each lands on an open tab', async () => {
+    const open = [1, 3, 10];
+    const { focus, calls } = setUp({ open });
+    focus.noteRemoval(2);
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), true);
+    // Tab 3 was shown, and now closes as well.
+    open.splice(open.indexOf(3), 1);
+    focus.noteRemoval(3);
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B' }), true);
+    assert.deepEqual(
+        calls.filter(([what]) => what === 'activate'),
+        [
+            ['activate', 3],
+            ['activate', 1]
+        ]
+    );
 });

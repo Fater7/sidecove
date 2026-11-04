@@ -131,6 +131,24 @@ describe('closing a tab keeps the space you are in', () => {
         expect(await activeTabId()).toBe(tabsInA[0]);
         // Beta still remembers the tab the user last visited there, not the one Chrome picked.
         expect((await spaceByName('Beta')).lastTab).toBe(tabsInB.at(-1));
+        // The service worker still has Alpha as this window's space (a new sidebar opens on it).
+        const { activeSpaces } = await page.evaluate(() => chrome.storage.session.get('activeSpaces'));
+        const { id: windowId } = await page.evaluate(() => chrome.windows.getCurrent());
+        expect(activeSpaces[windowId]).toBe((await spaceByName('Alpha')).id);
+    });
+
+    test('a tab in the middle closes: show the next one down the list, whatever Chrome would pick', async () => {
+        const { tabsInA } = await setUp('Iota', 'Kappa', ['one', 'two', 'three']);
+        await activateTab(tabsInA[1]);
+        await sleep(500);
+        // Chrome would show the tab to its right, which the list draws above it.
+        expect(await displayedTabs()).toEqual([tabsInA[2], tabsInA[1], tabsInA[0]]);
+
+        await closeTab(tabsInA[1]);
+        await sleep(1500);
+
+        expect(await activeSpaceName()).toBe('Iota');
+        expect(await activeTabId()).toBe(tabsInA[0]);
     });
 
     test('the last tab of the list closes: stay, and show the tab above it', async () => {
