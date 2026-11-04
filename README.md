@@ -42,7 +42,7 @@ To update, unzip the new release over the same folder and click the reload icon 
 
 To build and load from source instead, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-An unpacked copy is a separate extension from the store version: Chrome gives it its own id, so it has its own settings and its own record of which tabs belong to which space. Both read and write the same `Sidecove` bookmarks folder in your profile, so pinned tabs and favorites would show in both. Running both at once is not recommended; turn one off in `chrome://extensions/` first.
+An unpacked copy is a separate extension from the store version: Chrome gives it its own id, so it has its own settings and its own record of which tabs belong to which space. Both read and write the same `Sidecove` bookmarks folder in your profile, so pinned tabs and favorites would show in both. Settings and space records do not carry over from one copy to the other. Running both at once is not recommended; turn one off in `chrome://extensions/` first.
 
 ## Issues and Feature Requests
 
