@@ -106,6 +106,7 @@ async function saveOptions() {
         defaultSpaceName: defaultSpaceNameSelect?.value || 'Home',
         autoArchiveEnabled: getCheckboxValue(document.getElementById('autoArchiveEnabled'), false),
         autoArchiveIdleMinutes: parseInt(autoArchiveIdleMinutesInput?.value, 10) || 360,
+        perSpacePinnedFavorites: getCheckboxValue(document.getElementById('perSpacePinnedFavorites'), false),
         syncTabGroups: getCheckboxValue(document.getElementById('syncTabGroups'), false),
         invertTabOrder: getCheckboxValue(document.getElementById('invertTabOrder'), true),
         showAllOpenTabsInCollapsedFolders: getCheckboxValue(
@@ -155,6 +156,7 @@ async function restoreOptions() {
 
     // Restore checkbox values
     setCheckboxValue(document.getElementById('autoArchiveEnabled'), settings.autoArchiveEnabled, false);
+    setCheckboxValue(document.getElementById('perSpacePinnedFavorites'), settings.perSpacePinnedFavorites, false);
     setCheckboxValue(document.getElementById('syncTabGroups'), settings.syncTabGroups, false);
     setCheckboxValue(document.getElementById('invertTabOrder'), settings.invertTabOrder, true);
     setCheckboxValue(
@@ -269,6 +271,7 @@ function setupAutoSave() {
     // Auto-save for dropdown
     addListenerIfExists('defaultSpaceName', 'change', saveOptions);
     addListenerIfExists('spaceSwitcherStyle', 'change', saveOptions);
+    addListenerIfExists('perSpacePinnedFavorites', 'change', saveOptions);
 
     // Auto-save for checkboxes (most just save immediately)
     const checkboxIds = ['syncTabGroups', 'invertTabOrder', 'showAllOpenTabsInCollapsedFolders', 'debugLoggingEnabled'];

@@ -13,7 +13,7 @@ const lessons = {
     favorites: [
         'Practice: favorite this tab',
         'Always close by.',
-        'Drag this tab into Favorites at the top of your sidebar. It will be available in every space.'
+        'Drag this tab into Favorites at the top of your sidebar. It will stay in the top favorites bar.'
     ],
     archive: [
         'Practice: archive this tab',

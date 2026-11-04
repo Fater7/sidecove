@@ -206,7 +206,7 @@ test('late restored URL is assigned after an initially blank tab resolves', asyn
     });
     assert.equal(ownerOf(local.spaces, 10).id, 'b');
 });
-test('native pinning removes a space binding even when the sidebar is closed', async () => {
+test('native pinning keeps space ownership in the favicon section even with the sidebar closed', async () => {
     const store = new SpaceStore();
     await store.dispatch({ action: 'get' });
     tabs[0].pinned = true;
@@ -214,7 +214,9 @@ test('native pinning removes a space binding even when the sidebar is closed', a
         store.track(tabs[0]);
         await store.persist();
     });
-    assert.equal(ownerOf(local.spaces, 1), undefined);
+    assert.equal(ownerOf(local.spaces, 1).id, 'a');
+    assert.deepEqual(local.spaces[0].pinnedTabs, [1]);
+    assert.deepEqual(local.spaces[0].temporaryTabs, []);
     tabs[0].pinned = false;
     await store.run(async () => {
         store.track(tabs[0]);
@@ -422,4 +424,79 @@ test('a tab changing in an unfocused window does not count as the space in use; 
     chrome.windows.onFocusChanged.emit(2);
     await store.run(() => {});
     assert.equal(await newTabIn(store, 4, 34), 'a');
+});
+
+test('existing native pins migrate to the active space and survive worker restart', async () => {
+    tabs.push({ id: 3, windowId: 1, pinned: true, url: 'https://pin.test/' });
+    session.activeSpaces = { 1: 'b' };
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    assert.deepEqual(local.spaces[1].pinnedTabs, [3]);
+    await store.dispatch({ action: 'activate', windowId: 1, spaceId: 'a' });
+    const next = new SpaceStore();
+    await next.dispatch({ action: 'get' });
+    assert.deepEqual(local.spaces[1].pinnedTabs, [3]);
+});
+
+test('browser restart restores native pins by URL without consuming ordinary tab records', async () => {
+    session.spaceSession = false;
+    local.spaceTabSnapshot = [
+        { spaceId: 'a', section: 'temporaryTabs', order: 0, url: 'https://same.test/' },
+        { spaceId: 'b', section: 'pinnedTabs', order: 0, url: 'https://same.test/' }
+    ];
+    tabs = [
+        { id: 10, windowId: 1, pinned: true, url: 'https://same.test/' },
+        { id: 11, windowId: 1, pinned: false, url: 'https://same.test/' }
+    ];
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    assert.deepEqual(local.spaces[1].pinnedTabs, [10]);
+    assert.deepEqual(local.spaces[0].temporaryTabs, [11]);
+});
+
+test('stale panel edits preserve concurrently pinned tabs', () => {
+    const before = [space('a', [1]), space('b', [2])];
+    const current = structuredClone(before);
+    current[0].temporaryTabs = [];
+    current[0].pinnedTabs = [1];
+    const after = structuredClone(before);
+    after[0].name = 'Renamed';
+    const result = applySpacePatch(current, before, after);
+    assert.deepEqual(result[0].pinnedTabs, [1]);
+    assert.deepEqual(result[0].temporaryTabs, []);
+});
+
+test('moving a top-bar pin to another space keeps it pinned and excludes it from normal lists', async () => {
+    tabs[0].pinned = true;
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    await store.dispatch({ action: 'assignPin', tabId: 1, spaceId: 'b' });
+    assert.deepEqual(local.spaces[0].pinnedTabs, []);
+    assert.deepEqual(local.spaces[1].pinnedTabs, [1]);
+    assert.deepEqual(local.spaces[1].temporaryTabs, [2]);
+    assert.equal(tabs[0].pinned, true);
+});
+
+test('links opened from shared native pins use the selected space, while per-space pins keep their owner', async () => {
+    tabs[0].pinned = true;
+    session.activeSpaces = { 1: 'b' };
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    // The pin retains a remembered owner in a, independent of its visible scope.
+    await store.dispatch({ action: 'assignPin', tabId: 1, spaceId: 'a' });
+    const child = { id: 3, windowId: 1, openerTabId: 1, url: 'https://child.test/' };
+    tabs.push(child);
+    await store.run(async () => {
+        store.track(child);
+        await store.persist();
+    });
+    assert.equal(ownerOf(local.spaces, 3).id, 'b');
+    store.perSpacePinnedFavorites = true;
+    const scopedChild = { ...child, id: 4 };
+    tabs.push(scopedChild);
+    await store.run(async () => {
+        store.track(scopedChild);
+        await store.persist();
+    });
+    assert.equal(ownerOf(local.spaces, 4).id, 'a');
 });

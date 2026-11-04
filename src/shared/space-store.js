@@ -2,9 +2,8 @@ import { isPracticeUrl } from './tour-practice.js';
 import { syncSpaceGroups } from './tab-group-sync.js';
 import { LocalStorage } from './localstorage.js';
 
-const sections = ['spaceBookmarks', 'temporaryTabs'];
-export const tabIds = space => sections.flatMap(key => space?.[key] || []);
-export const ownerOf = (spaces, tabId) => spaces.find(space => tabIds(space).includes(tabId));
+import { sections, ownerOf, updateNativePinSection, spaceForActivation } from './space-membership.js';
+export { tabIds, ownerOf } from './space-membership.js';
 const clone = value => structuredClone(value);
 
 // The service worker is the only writer. UI patches express changes relative to the
@@ -17,7 +16,7 @@ export function applySpacePatch(current, before, after) {
         let target = result.find(s => s.id === next.id);
         if (!target) {
             if (prev) continue; // A different panel deleted this space.
-            target = { ...clone(next), spaceBookmarks: [], temporaryTabs: [] };
+            target = { ...clone(next), spaceBookmarks: [], temporaryTabs: [], pinnedTabs: [] };
             result.push(target);
         }
         for (const [key, value] of Object.entries(next)) {
@@ -32,9 +31,9 @@ export function applySpacePatch(current, before, after) {
             const added = newIds.filter(id => !oldIds.includes(id));
             for (const id of added) {
                 for (const space of result)
-                    for (const section of sections) space[section] = space[section].filter(t => t !== id);
+                    for (const section of sections) space[section] = (space[section] || []).filter(t => t !== id);
             }
-            const existing = target[key].filter(id => !deleted.includes(id));
+            const existing = (target[key] || []).filter(id => !deleted.includes(id));
             target[key] = [
                 ...newIds.filter(id => existing.includes(id) || added.includes(id)),
                 ...existing.filter(id => !newIds.includes(id))
@@ -78,7 +77,8 @@ export class SpaceStore {
             color: entry.color || color,
             ...(entry.icon ? { icon: entry.icon } : {}),
             spaceBookmarks: [],
-            temporaryTabs: []
+            temporaryTabs: [],
+            pinnedTabs: []
         };
     }
     async initialize() {
@@ -103,7 +103,9 @@ export class SpaceStore {
         this.restoredRanks = new Map(session.restoredTabRanks || []);
         this.active = session.activeSpaces || {};
         this.lastActive = session.lastActiveSpace || null;
-        this.defaultSpaceName = (await chrome.storage.sync.get('defaultSpaceName')).defaultSpaceName || 'Home';
+        const settings = await chrome.storage.sync.get(['defaultSpaceName', 'perSpacePinnedFavorites']);
+        this.defaultSpaceName = settings.defaultSpaceName || 'Home';
+        this.perSpacePinnedFavorites = settings.perSpacePinnedFavorites === true;
         const live = await chrome.tabs.query({});
         if (data.spaceModelVersion !== 2) {
             const idMap = new Map();
@@ -137,6 +139,7 @@ export class SpaceStore {
             this.spaces.forEach(s => {
                 s.spaceBookmarks = [];
                 s.temporaryTabs = [];
+                s.pinnedTabs = [];
                 delete s.lastTab;
             });
             this.active = {};
@@ -188,17 +191,15 @@ export class SpaceStore {
     }
     track(tab) {
         const url = tab.url || tab.pendingUrl;
-        if (tab.pinned) {
-            for (const space of this.spaces)
-                for (const key of sections) space[key] = space[key].filter(id => id !== tab.id);
-            return;
-        }
         if (url?.startsWith(chrome.runtime?.getURL?.('') || 'chrome-extension://invalid/') && !isPracticeUrl(url)) {
             for (const space of this.spaces)
                 for (const key of sections) space[key] = space[key].filter(id => id !== tab.id);
             return;
         }
         const existing = ownerOf(this.spaces, tab.id);
+        // Native pins keep their space, but live in the top favicon bar rather than
+        // either list. Unpinning returns them to that same space as ordinary tabs.
+        if (existing) updateNativePinSection(existing, tab);
         if (existing) {
             if (!this.provisional.has(tab.id) || !url) return;
             this.provisional.delete(tab.id);
@@ -207,13 +208,18 @@ export class SpaceStore {
         }
         if (!url) this.provisional.add(tab.id);
         const restoredIndex = this.restoreQueue.findIndex(
-            t => t.url === url && this.spaces.some(s => s.id === t.spaceId)
+            t =>
+                (t.section === 'pinnedTabs') === Boolean(tab.pinned) &&
+                t.url === url &&
+                this.spaces.some(s => s.id === t.spaceId)
         );
         const restored = restoredIndex >= 0 ? this.restoreQueue.splice(restoredIndex, 1)[0] : null;
         // Chrome can attach the current tab as opener even for Cmd/Ctrl+T.
         // A blank new-tab page belongs to the selected space, not that incidental opener.
         const isNewTabPage = !url || /^(chrome:\/\/(newtab|new-tab-page)\/?|about:blank)$/.test(url);
-        const openerSpace = isNewTabPage ? null : ownerOf(this.spaces, tab.openerTabId);
+        const openerSpace = isNewTabPage
+            ? null
+            : spaceForActivation(this.spaces, tab.openerTabId, this.perSpacePinnedFavorites);
         // A window with no space of its own yet (such as one Chrome opens for a link from another
         // app) uses the space last in use in any window; the default space is for when there
         // is none yet.
@@ -225,7 +231,7 @@ export class SpaceStore {
             this.spaces.find(s => s.name === this.defaultSpaceName) ||
             this.spaces[0];
         if (!space) return;
-        const key = restored?.section || 'temporaryTabs';
+        const key = tab.pinned ? 'pinnedTabs' : restored?.section || 'temporaryTabs';
         if (restored) {
             this.restoredMetadata.push({ ...restored, tabId: tab.id });
             // Preserve extension order when Chrome restores tabs in a different order.
@@ -308,19 +314,30 @@ export class SpaceStore {
                     }
                     this.spaces = applySpacePatch(this.spaces, message.before, message.after);
                     if (!this.spaces.length) this.spaces.push(await this.makeSpace(this.defaultSpaceName));
+                    // Shared pins survive deleting a space; give any orphan a remaining owner.
+                    for (const tab of await chrome.tabs.query({ pinned: true })) {
+                        if (tab.pinned && !ownerOf(this.spaces, tab.id)) this.track(tab);
+                    }
                     break;
                 case 'activate':
                     this.active[message.windowId] = message.spaceId;
                     // A panel starting up reports its window's space; only a real switch is "last used".
                     if (!message.initial) this.lastActive = message.spaceId;
                     break;
+                case 'assignPin':
                 case 'assign': {
                     const target = this.spaces.find(s => s.id === message.spaceId);
                     if (target) {
                         this.provisional.delete(message.tabId);
                         for (const space of this.spaces)
                             for (const key of sections) space[key] = space[key].filter(id => id !== message.tabId);
-                        target[message.pinned ? 'spaceBookmarks' : 'temporaryTabs'].push(message.tabId);
+                        target[
+                            message.action === 'assignPin'
+                                ? 'pinnedTabs'
+                                : message.pinned
+                                  ? 'spaceBookmarks'
+                                  : 'temporaryTabs'
+                        ].push(message.tabId);
                     }
                     break;
                 }
@@ -381,7 +398,8 @@ export class SpaceStore {
         );
         chrome.tabs.onActivated.addListener(info =>
             handle(async () => {
-                const space = ownerOf(this.spaces, info.tabId);
+                const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
+                const space = spaceForActivation(this.spaces, info.tabId, perSpacePinnedFavorites);
                 if (!space) return;
                 space.lastTab = info.tabId;
                 this.active[info.windowId] = space.id;
@@ -403,6 +421,10 @@ export class SpaceStore {
         chrome.storage.onChanged.addListener((changes, area) => {
             if (area === 'local' && (changes.pinnedTabStatesById || changes.tabNameOverridesById)) handle(() => {});
             if (area === 'sync' && changes.syncTabGroups) handle(() => {});
+            if (area === 'sync' && changes.perSpacePinnedFavorites)
+                handle(() => {
+                    this.perSpacePinnedFavorites = changes.perSpacePinnedFavorites.newValue === true;
+                });
             if (area === 'sync' && changes.defaultSpaceName)
                 handle(() => {
                     this.defaultSpaceName = changes.defaultSpaceName.newValue || 'Home';
