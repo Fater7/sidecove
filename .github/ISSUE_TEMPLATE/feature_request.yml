@@ -1,0 +1,69 @@
+name: Feature Request
+description: Suggest something Sidecove could do that it does not do today.
+title: "[Feature Request] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Read this first: Sidecove cannot ask for more permissions
+
+        Sidecove was approved by the Chrome Web Store with the permissions below, and nothing else. We only add features that work with exactly these, so a request that needs more cannot be done.
+
+        **What Sidecove can do today:**
+        - See the titles and addresses of your open tabs, and open, move, group and close them (tabs, tabGroups).
+        - Show itself in Chrome's side panel (sidePanel).
+        - Save its settings (storage).
+        - Keep your spaces and favorites in a Sidecove folder in your Chrome bookmarks (bookmarks).
+        - Run a timer, for auto-archive (alarms).
+        - Show the small site icons of your tabs (favicon).
+        - Copy a tab's address to your clipboard, using a hidden helper page (clipboardWrite, offscreen).
+
+        **What Sidecove cannot do, and will not be able to:**
+        - Read or change what is inside any web page. It has no access to any website, and no content scripts.
+        - Make requests to the internet, or load code from anywhere. Nothing leaves your browser.
+        - Use any other Chrome ability, such as history, downloads, cookies or web requests.
+  - type: checkboxes
+    id: permissions
+    attributes:
+      label: Permissions
+      description: Required. This keeps the list of requests honest, and saves you writing one that cannot be built.
+      options:
+        - label: I understand that Sidecove only adds features that work with the permissions it has today (listed above), and that a request needing any more permissions, any access to websites, or any content script will be closed as not possible.
+          required: true
+  - type: checkboxes
+    id: duplicates
+    attributes:
+      label: Existing issues
+      options:
+        - label: I searched the existing issues and could not find this request.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem or the use case, before any idea for the fix. If you are coming from Arc, say what you do there.
+    validations:
+      required: true
+  - type: textarea
+    id: feature
+    attributes:
+      label: What would you like Sidecove to do?
+      description: How it should look and behave.
+    validations:
+      required: true
+  - type: textarea
+    id: permissions-fit
+    attributes:
+      label: How could this work with the permissions above? (optional)
+      description: If you know of a way it can be done with the tabs, bookmarks and storage Sidecove already has, say so. It helps, but you do not need to know.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you have tried (optional)
+      description: Other ways you handle this today, including other extensions.
+  - type: textarea
+    id: media
+    attributes:
+      label: Mock-ups or examples (optional)
+      description: Drag and drop images, sketches or screenshots of other apps here.

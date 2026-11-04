@@ -50,6 +50,8 @@ To try a build, open `chrome://extensions/`, turn on **Developer mode**, click *
 
 Never add a permission, host permission or content script without saying so in the pull request title: Sidecove's permissions were approved in a security review, and a new one needs another.
 
+The permission list in `.github/ISSUE_TEMPLATE/feature_request.yml` and in the README's "Feature Requests" section is written out by hand from `manifest.json`. A change that touches the permissions updates both in the same pull request.
+
 ## Releases
 
 A release is a pull request; the tag comes after it merges, and GitHub Actions builds and publishes from the tag.
