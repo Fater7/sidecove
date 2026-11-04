@@ -72,7 +72,7 @@ CI=true npm run test:e2e -- --json --outputFile="$RESULT" || STATUS=$?
 
 if [ ! -s "$RESULT" ]; then
   echo "The suite did not produce a result (exit status $STATUS); nothing to summarise." >&2
-  exit "${STATUS:-1}"
+  exit $((STATUS == 0 ? 1 : STATUS))
 fi
 
 SUMMARY="$(node -e '
