@@ -157,6 +157,24 @@ test('links opened from one tab stack below it in opening order, whichever way t
         tabs.length = 2;
     }
 });
+test('links keep their opening order after the service worker restarts', async () => {
+    const open = async (store, id) => {
+        const child = { id, windowId: 1, openerTabId: 2, url: `https://child${id}.test/` };
+        tabs.push(child);
+        await store.run(async () => {
+            store.track(child);
+            await store.persist();
+        });
+    };
+    sync.invertTabOrder = false;
+    local.spaces[1].temporaryTabs = [2];
+    await open(new SpaceStore(), 4);
+    // A new worker has no memory of the first link, but Chrome still reports its opener.
+    const restarted = new SpaceStore();
+    await restarted.dispatch({ action: 'get' });
+    await open(restarted, 5);
+    assert.deepEqual(local.spaces[1].temporaryTabs, [2, 4, 5]);
+});
 test('the Show new tabs at the top setting is picked up without a restart', async () => {
     const store = new SpaceStore();
     store.install();

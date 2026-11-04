@@ -112,8 +112,9 @@ export class SpaceStore {
         this.defaultSpaceName = settings.defaultSpaceName || 'Home';
         this.perSpacePinnedFavorites = settings.perSpacePinnedFavorites === true;
         this.invertTabOrder = settings.invertTabOrder !== false;
-        this.openers = new Map();
         const live = await chrome.tabs.query({});
+        // Kept in memory only; read back from Chrome so a restarted worker still knows who opened what.
+        this.openers = new Map(live.filter(t => t.openerTabId !== undefined).map(t => [t.id, t.openerTabId]));
         if (data.spaceModelVersion !== 2) {
             const idMap = new Map();
             const migrated = [];
@@ -252,8 +253,7 @@ export class SpaceStore {
             // A link opened from a tab goes below it, whichever way the list is drawn. Chrome reports
             // no address yet for some link tabs, so only a named new-tab page is left out.
             this.openers.set(tab.id, tab.openerTabId);
-            const siblings = space[key].filter(id => this.openers.get(id) === tab.openerTabId);
-            space[key] = placeLinkTab(space[key], tab.openerTabId, tab.id, siblings, this.invertTabOrder);
+            space[key] = placeLinkTab(space[key], tab.openerTabId, tab.id, this.openers, this.invertTabOrder);
         } else space[key].push(tab.id);
     }
     async persist() {
