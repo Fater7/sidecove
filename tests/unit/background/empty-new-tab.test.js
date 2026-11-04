@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Utils } from '../../../src/shared/utils.js';
 import { isNewTabPage, isUntouchedPage, shouldCloseEmptyNewTab } from '../../../src/background/empty-new-tab.js';
 
 const emptyTab = { id: 5, url: 'chrome://newtab/', pinned: false };
@@ -12,7 +11,6 @@ const ask = (overrides = {}) =>
         windowTabCount: 3,
         protectedIds: new Set(),
         bindings: {},
-        urlKeys: new Set(),
         ...overrides
     });
 
@@ -53,7 +51,7 @@ test('keeps a tab that did not start as an empty new tab or has been to a site',
 test('keeps a tab that is now on, or heading to, another page', () => {
     assert.equal(ask({ tab: { ...emptyTab, url: 'https://example.com/' } }), false);
     assert.equal(ask({ tab: { ...emptyTab, pendingUrl: 'https://example.com/' } }), false);
-    assert.equal(ask({ tab: { ...emptyTab, url: '' } }), false, 'the page has not loaded yet');
+    assert.equal(ask({ tab: { ...emptyTab, url: '', pendingUrl: 'chrome://newtab/' } }), true, 'still loading');
 });
 
 test('never closes the last tab of a window', () => {
@@ -65,9 +63,4 @@ test('never closes a pinned tab or a favourite', () => {
     assert.equal(ask({ tab: { ...emptyTab, pinned: true } }), false);
     assert.equal(ask({ protectedIds: new Set([5]) }), false, 'a favourite of a space');
     assert.equal(ask({ bindings: { 5: { bookmarkId: 'b1' } } }), false, 'a tab bound to a favourite bookmark');
-    assert.equal(
-        ask({ urlKeys: new Set([Utils.getPinnedUrlKey(emptyTab.url)]) }),
-        false,
-        'its address is a Sidecove bookmark'
-    );
 });

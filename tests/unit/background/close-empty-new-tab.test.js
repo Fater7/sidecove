@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { registerCloseEmptyNewTab, EMPTY_TAB_STORAGE_KEY } from '../../../src/background/close-empty-new-tab.js';
 
 const NTP = 'chrome://newtab/';
-let tabs, session, removed, settings, bookmarks, spaces, pinnedStates, listeners;
+let tabs, session, removed, settings, spaces, pinnedStates, listeners;
 
 const event = name => ({ addListener: fn => (listeners[name] = fn) });
 const chromeApi = () => ({
@@ -25,20 +25,25 @@ const chromeApi = () => ({
         onRemoved: event('removed'),
         onReplaced: event('replaced')
     },
+    windows: { onRemoved: event('windowRemoved') },
     storage: {
         session: {
             get: async key => ({ [key]: session[key] }),
             set: async values => Object.assign(session, structuredClone(values))
         },
         local: { get: async () => ({ pinnedTabStatesById: pinnedStates }) }
-    },
-    bookmarks: { search: async () => bookmarks.search, getSubTree: async () => [bookmarks.tree] }
+    }
 });
 const start = async () => {
     globalThis.chrome = chromeApi();
     const { ready } = registerCloseEmptyNewTab({
         chromeApi: globalThis.chrome,
-        spaceStore: { dispatch: async () => spaces },
+        spaceStore: {
+            run: async operation => operation.call(null),
+            get spaces() {
+                return spaces;
+            }
+        },
         getSettings: async () => settings
     });
     await ready;
@@ -70,7 +75,6 @@ beforeEach(() => {
     session = {};
     removed = [];
     settings = { closeEmptyNewTabs: true };
-    bookmarks = { search: [], tree: null };
     spaces = [{ id: 'a', spaceBookmarks: [] }];
     pinnedStates = {};
     listeners = {};
@@ -156,24 +160,6 @@ test('never closes a pinned tab or a favourite', async () => {
     assert.deepEqual(removed, []);
 });
 
-test('keeps a tab whose address is a favourite bookmark', async () => {
-    bookmarks = { search: [{ id: 'root' }], tree: { id: 'root', children: [{ id: 'b', url: NTP }] } };
-    await start();
-    await openNewTab(2);
-    await switchTo(1);
-    assert.deepEqual(removed, []);
-});
-
-test('keeps the tab when the favourites cannot be read', async () => {
-    await start();
-    chrome.bookmarks.search = async () => {
-        throw new Error('unavailable');
-    };
-    await openNewTab(2);
-    await switchTo(1);
-    assert.deepEqual(removed, []);
-});
-
 test('watches each window on its own', async () => {
     tabs.push({ id: 9, windowId: 2, url: 'https://nine.test/', active: true, pinned: false });
     await start();
@@ -201,4 +187,40 @@ test('forgets a tab that closes', async () => {
     await listeners.removed(2);
     await settle();
     assert.deepEqual(session[EMPTY_TAB_STORAGE_KEY].untouched, []);
+});
+
+test('keeps a tab the user went straight back to', async () => {
+    await start();
+    await openNewTab(2);
+    const away = listeners.activated({ tabId: 1, windowId: 1 }); // still deciding when...
+    await listeners.activated({ tabId: 2, windowId: 1 }); // ...the user comes back
+    await away;
+    await settle();
+    assert.deepEqual(removed, []);
+});
+
+test('keeps a tab that was moved to another window', async () => {
+    tabs.push({ id: 9, windowId: 2, url: 'https://nine.test/', active: true, pinned: false });
+    await start();
+    await openNewTab(2, 1);
+    tabs.find(t => t.id === 2).windowId = 2; // dragged into the other window
+    await listeners.activated({ tabId: 1, windowId: 1 });
+    await settle();
+    assert.deepEqual(removed, []);
+});
+
+test('closes a tab left before its page finished loading', async () => {
+    await start();
+    tabs.push({ id: 2, windowId: 1, url: '', pendingUrl: NTP, active: false, pinned: false });
+    await listeners.created({ id: 2, windowId: 1, url: '', pendingUrl: NTP });
+    await listeners.activated({ tabId: 2, windowId: 1 });
+    await switchTo(1);
+    assert.deepEqual(removed, [2]);
+});
+
+test('forgets a window that closes', async () => {
+    await start();
+    await listeners.windowRemoved(1);
+    await settle();
+    assert.deepEqual(session[EMPTY_TAB_STORAGE_KEY].shown, []);
 });

@@ -1,4 +1,3 @@
-import { collectFavoriteUrlKeys } from '../shared/favorite-safety.js';
 import { Utils } from '../shared/utils.js';
 import { Logger } from '../shared/logger.js';
 import { isNewTabPage, isUntouchedPage, shouldCloseEmptyNewTab } from './empty-new-tab.js';
@@ -32,15 +31,18 @@ export function registerCloseEmptyNewTab({ chromeApi = chrome, spaceStore, getSe
         }
     })().catch(error => Logger.warn('[Empty new tab] Could not start tracking:', error));
 
-    async function closeIfEmpty(tabId) {
+    // The tab is shown again if the user went straight back, or may have moved to another window.
+    const isShown = tabId => [...shown.values()].includes(tabId);
+
+    async function closeIfEmpty(tabId, windowId) {
         const settings = await getSettings();
         if (!settings.closeEmptyNewTabs) return;
         const tab = await chromeApi.tabs.get(tabId);
-        const [windowTabs, spaces, bindings, urlKeys] = await Promise.all([
-            chromeApi.tabs.query({ windowId: tab.windowId }),
-            spaceStore.dispatch({ action: 'get' }),
-            Utils.getPinnedTabStates(),
-            collectFavoriteUrlKeys(chromeApi)
+        if (tab.windowId !== windowId) return;
+        const [windowTabs, spaces, bindings] = await Promise.all([
+            chromeApi.tabs.query({ windowId }),
+            spaceStore.run(() => spaceStore.spaces),
+            Utils.getPinnedTabStates()
         ]);
         const close = shouldCloseEmptyNewTab({
             enabled: true,
@@ -48,17 +50,16 @@ export function registerCloseEmptyNewTab({ chromeApi = chrome, spaceStore, getSe
             untouched: untouched.has(tabId),
             windowTabCount: windowTabs.length,
             protectedIds: new Set(spaces.flatMap(space => space.spaceBookmarks)),
-            bindings,
-            urlKeys
+            bindings
         });
-        if (!close) return;
+        if (!close || isShown(tabId)) return;
         try {
             await chromeApi.tabs.remove(tabId);
         } catch (error) {
             // Chrome refuses while a tab is being dragged; try again once it has settled.
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-            await chromeApi.tabs.remove(tabId).catch(() => {});
             Logger.warn('[Empty new tab] Could not close the tab at once:', error);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            if (!isShown(tabId)) await chromeApi.tabs.remove(tabId).catch(() => {});
         }
     }
 
@@ -77,11 +78,13 @@ export function registerCloseEmptyNewTab({ chromeApi = chrome, spaceStore, getSe
     chromeApi.tabs.onActivated.addListener(async ({ tabId, windowId }) => {
         await ready;
         const left = shown.get(windowId);
-        shown.set(windowId, tabId);
-        save();
+        if (left !== tabId) {
+            shown.set(windowId, tabId);
+            save();
+        }
         if (left === undefined || left === tabId || !untouched.has(left)) return;
         try {
-            await closeIfEmpty(left);
+            await closeIfEmpty(left, windowId);
         } catch (error) {
             // The tab may already be gone, which is fine.
             Logger.warn('[Empty new tab] Could not check the tab you left:', error);
@@ -90,6 +93,10 @@ export function registerCloseEmptyNewTab({ chromeApi = chrome, spaceStore, getSe
     chromeApi.tabs.onRemoved.addListener(async tabId => {
         await ready;
         if (untouched.delete(tabId)) save();
+    });
+    chromeApi.windows.onRemoved.addListener(async windowId => {
+        await ready;
+        if (shown.delete(windowId)) save();
     });
     chromeApi.tabs.onReplaced.addListener(async (added, removed) => {
         await ready;
