@@ -1,6 +1,6 @@
-import { launchBrowserWithExtension, openSidebar } from './helpers/extension-helper.js';
+import { launchBrowserWithExtension, openSidebar, openOptionsPage } from './helpers/extension-helper.js';
 
-let browser, page, first, second, pinA, pinB;
+let browser, page, options, first, second, pinA, pinB;
 const visiblePins = () =>
     page.$$eval('#pinnedFavicons .pinned-favicon', els => els.map(el => Number(el.dataset.tabId)));
 const waitForPins = ids =>
@@ -25,6 +25,7 @@ beforeAll(async () => {
     const result = await launchBrowserWithExtension();
     browser = result.browser;
     page = await openSidebar(browser, result.extensionId);
+    options = await openOptionsPage(browser, result.extensionId);
     ({ first, second, pinA, pinB } = await page.evaluate(async () => {
         const request = async (action, args = {}) => {
             const response = await chrome.runtime.sendMessage({ type: 'spaceStore', action, ...args });
@@ -53,6 +54,28 @@ afterAll(async () => {
     await browser?.close();
 });
 
+test('favorites are shared by default and activating a shared pin keeps the selected space', async () => {
+    expect(await options.$eval('#perSpacePinnedFavorites', input => input.checked)).toBe(false);
+    await switchTo(second);
+    await waitForPins([pinA, pinB]);
+    await page.evaluate(id => chrome.tabs.update(id, { active: true }), pinA);
+    await page.waitForFunction(
+        async second => {
+            const { activeSpaces } = await chrome.storage.session.get('activeSpaces');
+            const { id } = await chrome.windows.getCurrent();
+            return activeSpaces[id] === second;
+        },
+        { polling: 100 },
+        second
+    );
+    expect(await page.$eval('.space.active', el => el.dataset.spaceId)).toBe(second);
+    await switchTo(first);
+    await waitForPins([pinA, pinB]);
+    // Use the actual Settings control to enable the opt-in behavior in the open panel.
+    await options.$eval('#perSpacePinnedFavorites', input => input.click());
+    await waitForPins([pinA]);
+});
+
 test('the top bar follows the selected space and keeps its pins after panel reload', async () => {
     await switchTo(first);
     await waitForPins([pinA]);
@@ -65,6 +88,20 @@ test('the top bar follows the selected space and keeps its pins after panel relo
     await page.evaluate(id => chrome.tabs.update(id, { active: true }), pinA);
     await waitForPins([pinA]);
     await page.waitForSelector(`.space.active[data-space-id="${first}"]`);
+});
+
+test('toggling sharing preserves assignments and the saved option', async () => {
+    await options.$eval('#perSpacePinnedFavorites', input => input.click());
+    await waitForPins([pinA, pinB]);
+    await switchTo(second);
+    await waitForPins([pinA, pinB]);
+    await options.reload({ waitUntil: 'domcontentloaded' });
+    await options.waitForSelector('#perSpacePinnedFavorites');
+    expect(await options.$eval('#perSpacePinnedFavorites', input => input.checked)).toBe(false);
+    await options.$eval('#perSpacePinnedFavorites', input => input.click());
+    await waitForPins([pinB]);
+    await switchTo(first);
+    await waitForPins([pinA]);
 });
 
 test('unpinning removes the icon and returns the tab to its space', async () => {

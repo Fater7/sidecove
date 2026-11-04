@@ -138,6 +138,7 @@ const Utils = {
             autoArchiveEnabled: false, // Default: disabled
             autoArchiveIdleMinutes: 360, // Default: 6 hours
             syncTabGroups: false,
+            perSpacePinnedFavorites: false,
             invertTabOrder: true, // Default: enabled (new temporary tabs on top; favorites keep bookmark order)
             colorOverrides: null, // Default: no color overrides
             debugLoggingEnabled: false, // Default: disabled (controls debug logging)

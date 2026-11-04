@@ -1,3 +1,4 @@
+import { spaceForActivation } from '../shared/space-membership.js';
 import { createPinnedFavorites } from './features/pinned-favorites/pinned-favorites.js';
 import {
     getSpaceBookmarkById,
@@ -691,9 +692,15 @@ async function initSidebar() {
     const activeTab = allTabs.find(t => t.active && t.windowId === currentWindow.id);
     activeChromeTabId = activeTab?.id;
     const { activeSpaces = {} } = await chrome.storage.session.get('activeSpaces');
-    await setActiveSpace(activeSpaces[currentWindow.id] || ownerOf(spaces, activeTab?.id)?.id || spaces[0]?.id, false, {
-        initial: true
-    });
+    await setActiveSpace(
+        activeSpaces[currentWindow.id] ||
+            spaceForActivation(spaces, activeTab?.id, settings.perSpacePinnedFavorites)?.id ||
+            spaces[0]?.id,
+        false,
+        {
+            initial: true
+        }
+    );
     previousSpaceId = activeSpaceId;
     setupDOMElements(createNewSpace, () => spaces);
     sidebarReady = true;
@@ -4411,12 +4418,8 @@ function handleTabActivated(activeInfo) {
         Logger.log('Tab activated:', activeInfo);
         activeChromeTabId = activeInfo.tabId;
         // Find which space contains this tab
-        const spaceWithTab = spaces.find(
-            space =>
-                space.spaceBookmarks.includes(activeInfo.tabId) ||
-                space.temporaryTabs.includes(activeInfo.tabId) ||
-                space.pinnedTabs?.includes(activeInfo.tabId)
-        );
+        const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
+        const spaceWithTab = spaceForActivation(spaces, activeInfo.tabId, perSpacePinnedFavorites);
         Logger.log('found space', spaceWithTab);
 
         if (spaceWithTab) {
@@ -4477,7 +4480,10 @@ async function deleteSpace(spaceId) {
         await chrome.bookmarks.removeTree(folderToDelete.id);
         await LocalStorage.removeSpaceRegistryEntry(folderToDelete.id);
         // Close live tabs owned by the deleted space.
-        const ownedTabs = (await chrome.tabs.query({})).filter(t => ownerOf(spaces, t.id)?.id === spaceId);
+        const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
+        const ownedTabs = (await chrome.tabs.query({})).filter(
+            t => spaceForActivation(spaces, t.id, perSpacePinnedFavorites)?.id === spaceId
+        );
 
         // Remove space from array
         spaces = spaces.filter(s => s.id !== spaceId);

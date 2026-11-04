@@ -39,9 +39,9 @@ export const TOUR_STEPS = [
         id: 'favorites',
         label: 'Favorites',
         title: 'Your everyday sites, everywhere',
-        tip: 'Drag “Practice: favorite this tab” into the highlighted area, or right-click it → Add to Favorites. It will stay at the top of this space.',
-        caption: 'Put your everyday sites at the top. Each space has its own Favorites.',
-        detail: 'Favorites belong to the space where you add them. Drag one onto another space in the space bar to move it there, or back into the tab list to remove it from Favorites.',
+        tip: 'Drag “Practice: favorite this tab” into the highlighted area, or right-click it → Add to Favorites. It will stay in the top favorites bar.',
+        caption: 'Put your everyday sites at the top. Favorites are shared across spaces by default.',
+        detail: 'Favorites are shared across spaces by default. Enable Settings → Separate favorites for each space to give each space its own top bar. Switching modes keeps your favorites and their assignments.',
         target: '#pinnedFavicons'
     },
     {

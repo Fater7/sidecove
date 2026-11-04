@@ -14,7 +14,7 @@ Sidecove is an independent project, not affiliated with or endorsed by The Brows
 
 - Vertical tabs in Chrome's side panel, organised into spaces with their own colour and icon
 - Pinned tabs, favorites and nested folders, stored as ordinary Chrome bookmarks
-- A top icon bar of Chrome-pinned tabs for each space; pin a tab in its space to add it, or drag it to the top bar. Switching spaces shows that space’s pins. Drag a top-bar icon onto a space chip to move it there. Chrome still shows all native pins in its own tab strip.
+- A top icon bar of Chrome-pinned favorites, shared across spaces in this Chrome profile by default. Enable **Settings → Separate favorites for each space** for a different top bar in each space. Switching this setting keeps your pins and their space assignments. Chrome still shows all native pins in its own tab strip.
 - Drag tabs, favorites and folders between sections, folders and spaces; drop one tab on a favorite to make a folder
 - Multi-select with Cmd or Ctrl click and Shift click to move, pin, archive, close or file several tabs at once
 - Search open tabs and favorites across spaces (Cmd or Ctrl+F)

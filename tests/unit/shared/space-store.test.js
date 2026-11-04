@@ -476,3 +476,27 @@ test('moving a top-bar pin to another space keeps it pinned and excludes it from
     assert.deepEqual(local.spaces[1].temporaryTabs, [2]);
     assert.equal(tabs[0].pinned, true);
 });
+
+test('links opened from shared native pins use the selected space, while per-space pins keep their owner', async () => {
+    tabs[0].pinned = true;
+    session.activeSpaces = { 1: 'b' };
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    // The pin retains a remembered owner in a, independent of its visible scope.
+    await store.dispatch({ action: 'assignPin', tabId: 1, spaceId: 'a' });
+    const child = { id: 3, windowId: 1, openerTabId: 1, url: 'https://child.test/' };
+    tabs.push(child);
+    await store.run(async () => {
+        store.track(child);
+        await store.persist();
+    });
+    assert.equal(ownerOf(local.spaces, 3).id, 'b');
+    store.perSpacePinnedFavorites = true;
+    const scopedChild = { ...child, id: 4 };
+    tabs.push(scopedChild);
+    await store.run(async () => {
+        store.track(scopedChild);
+        await store.persist();
+    });
+    assert.equal(ownerOf(local.spaces, 4).id, 'a');
+});

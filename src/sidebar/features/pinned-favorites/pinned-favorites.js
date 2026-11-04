@@ -14,15 +14,29 @@ export function createPinnedFavorites({
     hideAllDropIndicators,
     calculatePinnedTabIndex
 }) {
-    return async function updatePinnedFavicons() {
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'sync' && changes.perSpacePinnedFavorites) {
+            updatePinnedFavicons().catch(error => Logger.error('Could not update favorites scope', error));
+        }
+    });
+    return updatePinnedFavicons;
+
+    async function updatePinnedFavicons() {
         const pinnedFavicons = document.getElementById('pinnedFavicons');
         // Read the worker's canonical membership: native pin events can arrive before
         // the panel's stored-space refresh, and a different panel may have moved a tab.
         const storedSpaces = await spaceRequest('get');
+        const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
         const visibleIds = new Set(storedSpaces.find(space => space.id === getActiveSpaceId())?.pinnedTabs || []);
-        const pinnedTabs = (await chrome.tabs.query({ pinned: true, windowId: getWindowId() })).filter(tab =>
-            visibleIds.has(tab.id)
+        const pinnedTabs = (await chrome.tabs.query({ pinned: true, windowId: getWindowId() })).filter(
+            tab => !perSpacePinnedFavorites || visibleIds.has(tab.id)
         );
+
+        const subtitle = pinnedFavicons.querySelector('.placeholder-subtitle');
+        if (subtitle)
+            subtitle.textContent = perSpacePinnedFavorites
+                ? 'Favorites keep your most used sites close in this space'
+                : 'Favorites keep your most used sites close across all spaces';
 
         // Remove favicon elements for tabs that are no longer pinned
         Array.from(pinnedFavicons.children).forEach(element => {
@@ -238,5 +252,5 @@ export function createPinnedFavorites({
                 }
             });
         } // end bind-once guard for pinnedFavicons drag listeners
-    };
+    }
 }

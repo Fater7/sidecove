@@ -2,7 +2,7 @@
 
 ## Unreleased (1.3.0)
 
-- **Pinned favourites per space:** the top icon bar now shows only the Chrome-pinned tabs belonging to the current space. Pinning keeps a tab in its space, and ownership survives browser restarts. Existing top-bar pins are assigned to the active or default space during migration.
+- **Optional favorites per space:** enable Settings → Separate favorites for each space to show only the current space’s top-bar favorites. Favorites stay shared across spaces by default. Switching modes preserves pins and their space assignments, including across restarts.
 
 - **Pinned tab matching setting:** hosts listed under Settings → Pinned tab matching (e.g. `localhost:6969`) keep their query string when matching pinned tabs, so URLs like `localhost:6969/?focused=<chat id>` pin as one entry per URL instead of collapsing into a single pinned tab. Other hosts keep the old behavior.
 - **Repository cleanup, part 1 (housekeeping):** removed the outdated Cursor rules, stale test notes and five unused development packages; developer documentation moved to CONTRIBUTING.md; CI runs on one current Node version and on every pull request, and the upgrade test now starts from the latest release. The extension itself, its permissions and your data are unchanged.
