@@ -15,6 +15,7 @@
 - **Repository cleanup, part 6 (releases):** a release is now a pull request, and the tag comes after it merges. The release build runs the tests, checks the version, takes its notes from this changelog, and publishes a checksum you can verify with `sha256sum -c` and a build provenance record. Users will not notice any change in the extension.
 - **Easier to find from Arc:** Sidecove's name and description now say it brings Arc-style spaces, pinned tabs and favourites to Chrome for people moving from Arc, and the Chrome Web Store text says it is not made by or affiliated with The Browser Company. The longer name also shows in Chrome's extensions page and menus. Nothing else in the extension changed: no permission, feature or behaviour.
 - **End-to-end tests run on the laptop, not in CI:** `npm run test:e2e:local` builds the earlier releases for the upgrade test, runs the suite with Puppeteer's own Chrome and prints one line to paste into the pull request, whose template now asks for it. Users will not notice any change.
+- **Closing a tab keeps you in your space:** when you close the tab you are on, Sidecove now stays in the same space and shows the next tab down its list (the one above if you closed the last), as Arc does. Before, Chrome could pick a tab from another space, such as the one you had come from, and Sidecove followed it there. If the space has no other tab, it opens a New Tab in that space. Clicking a tab of another space still switches to it. It needs no new permission.
 
 ## 1.2.0
 

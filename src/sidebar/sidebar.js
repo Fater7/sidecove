@@ -82,6 +82,9 @@ import {
     showUndoToast,
     showMenu
 } from './dom-manager.js';
+import { createCloseFocus } from './features/close-tab/close-focus.js';
+import { displayedTabIds } from './features/close-tab/displayed-tabs.js';
+import { restoreAfterPick } from './features/close-tab/restore-after-pick.js';
 import { BookmarkUtils } from '../shared/bookmark-utils.js';
 import { Logger } from '../shared/logger.js';
 import { MOUSE_BUTTON, CSS_CLASSES, TIMING } from '../shared/constants.js';
@@ -4264,8 +4267,38 @@ function handleTabUpdate(tabId, changeInfo, tab) {
     });
 }
 
+// Chrome picks the next tab itself when the active one closes; keep the space you are in.
+const closeFocus = createCloseFocus({
+    getActiveSpaceId: () => activeSpaceId,
+    getActiveTabId: () => activeChromeTabId,
+    setActiveTabId: tabId => {
+        activeChromeTabId = tabId;
+    },
+    ownerOf: tabId => ownerOf(spaces, tabId)?.id,
+    displayedOrder: spaceId => displayedTabIds(spaceId),
+    tabExists: tabId =>
+        chrome.tabs.get(tabId).then(
+            () => true,
+            () => false
+        ),
+    openTabIds: async () => (await chrome.tabs.query({ windowId: currentWindow.id })).map(tab => tab.id),
+    activateTab: tabId => chrome.tabs.update(tabId, { active: true }),
+    openNewTab: () => createNewTab(),
+    restoreAfterPick: async (spaceId, pickedTabId, visitedTabId) =>
+        restoreAfterPick({
+            spaceRequest,
+            space: spaces.find(s => s.id === spaceId),
+            visitedTabId,
+            openIds: new Set((await chrome.tabs.query({ windowId: currentWindow.id })).map(tab => tab.id)),
+            pickedTabId,
+            windowId: currentWindow.id,
+            shownSpaceId: activeSpaceId
+        }).catch(error => Logger.warn('Could not restore the space after a close:', error))
+});
+
 async function handleTabRemove(tabId) {
     Logger.log('Tab removed:', tabId);
+    closeFocus.noteRemoval(tabId);
     editorSessions.dispose('tab', tabId);
     await Utils.removePinnedTabState(tabId);
     // Get tab element before removing it
@@ -4340,11 +4373,22 @@ function handleTabActivated(activeInfo) {
         }
 
         Logger.log('Tab activated:', activeInfo);
-        activeChromeTabId = activeInfo.tabId;
         // Find which space contains this tab
         const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
         const spaceWithTab = spaceForActivation(spaces, activeInfo.tabId, perSpacePinnedFavorites);
         Logger.log('found space', spaceWithTab);
+
+        if (
+            spaceWithTab &&
+            (await closeFocus.stayAfterClose({
+                activatedTabId: activeInfo.tabId,
+                activatedSpaceId: spaceWithTab.id
+            }))
+        ) {
+            Logger.log('Active tab closed; staying in the current space');
+            return;
+        }
+        activeChromeTabId = activeInfo.tabId;
 
         if (spaceWithTab) {
             spaceWithTab.lastTab = activeInfo.tabId;
