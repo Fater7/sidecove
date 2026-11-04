@@ -49,7 +49,7 @@ body:
     attributes:
       label: Sidecove version
       description: Shown on the Sidecove card at chrome://extensions.
-      placeholder: "1.2.0"
+      placeholder: "X.Y.Z"
     validations:
       required: true
   - type: input
