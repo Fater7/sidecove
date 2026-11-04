@@ -135,7 +135,78 @@ test('worker restart preserves session membership and opener determines new tab 
     });
     const next = new SpaceStore();
     await next.dispatch({ action: 'get' });
-    assert.deepEqual(next.spaces[1].temporaryTabs, [2, 3]);
+    // Stored in Chrome order; the list is drawn reversed by default, so 3 is drawn below 2.
+    assert.deepEqual(next.spaces[1].temporaryTabs, [3, 2]);
+});
+test('links opened from one tab stack below it in opening order, whichever way the list is drawn', async () => {
+    for (const invertTabOrder of [true, false]) {
+        sync.invertTabOrder = invertTabOrder;
+        local.spaces[1].temporaryTabs = [2];
+        const store = new SpaceStore();
+        await store.dispatch({ action: 'get' });
+        for (const id of [4, 5, 6]) {
+            const child = { id, windowId: 1, openerTabId: 2, url: `https://child${id}.test/` };
+            tabs.push(child);
+            await store.run(async () => {
+                store.track(child);
+                await store.persist();
+            });
+        }
+        const stored = local.spaces[1].temporaryTabs;
+        assert.deepEqual(invertTabOrder ? [...stored].reverse() : stored, [2, 4, 5, 6]);
+        tabs.length = 2;
+    }
+});
+test('the Show new tabs at the top setting is picked up without a restart', async () => {
+    const store = new SpaceStore();
+    store.install();
+    await store.dispatch({ action: 'get' });
+    assert.equal(store.invertTabOrder, true);
+    chrome.storage.onChanged.emit({ invertTabOrder: { newValue: false } }, 'sync');
+    await store.run(() => {});
+    assert.equal(store.invertTabOrder, false);
+});
+test('a new-tab page with an incidental opener goes where new tabs go, not next to the opener', async () => {
+    local.spaces[1].temporaryTabs = [7, 2, 8];
+    tabs.push({ id: 7, windowId: 1, url: 'https://seven.test/' }, { id: 8, windowId: 1, url: 'https://eight.test/' });
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'activate', spaceId: 'b', windowId: 1 });
+    const tab = { id: 3, windowId: 1, openerTabId: 2, url: 'chrome://newtab/' };
+    tabs.push(tab);
+    await store.run(async () => {
+        store.track(tab);
+        await store.persist();
+    });
+    assert.deepEqual(local.spaces[1].temporaryTabs, [7, 2, 8, 3]);
+});
+test('a link tab that Chrome reports without an address yet still goes below its opener', async () => {
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'activate', spaceId: 'b', windowId: 1 });
+    const child = { id: 3, windowId: 1, openerTabId: 2, url: '' };
+    tabs.push(child);
+    await store.run(async () => {
+        store.track(child);
+        await store.persist();
+    });
+    assert.deepEqual(local.spaces[1].temporaryTabs, [3, 2]);
+});
+test('a link opened from a favourite goes to the top of the tab list', async () => {
+    tabs[0].pinned = true;
+    local.spaces[0].pinnedTabs = [1];
+    local.spaces[0].temporaryTabs = [9];
+    tabs.push({ id: 9, windowId: 1, url: 'https://nine.test/' });
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    for (const id of [4, 5]) {
+        const child = { id, windowId: 1, openerTabId: 1, url: `https://child${id}.test/` };
+        tabs.push(child);
+        await store.run(async () => {
+            store.track(child);
+            await store.persist();
+        });
+    }
+    // Drawn reversed by default: top of the list is the end of the stored list.
+    assert.deepEqual([...ownerOf(local.spaces, 4).temporaryTabs].reverse(), [4, 5, 9]);
 });
 test('explicit assignment beats creation fallback', async () => {
     const store = new SpaceStore();
