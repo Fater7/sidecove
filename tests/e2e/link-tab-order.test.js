@@ -61,13 +61,21 @@ describe('Link tab order', () => {
         await delay(1000);
     }
 
-    async function cmdClick(page, selector) {
+    // Real mouse input at the element's position. page.click waits on a layout check that
+    // never finishes in the current Chrome for Testing, so it is not used here.
+    async function clickAt(page, selector, { meta = false } = {}) {
         await page.bringToFront();
-        await page.keyboard.down('Meta');
-        await page.click(selector);
-        await page.keyboard.up('Meta');
+        const { x, y } = await page.$eval(selector, el => {
+            const box = el.getBoundingClientRect();
+            return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+        });
+        if (meta) await page.keyboard.down('Meta');
+        await page.mouse.click(x, y);
+        if (meta) await page.keyboard.up('Meta');
         await delay(400);
     }
+
+    const cmdClick = (page, selector) => clickAt(page, selector, { meta: true });
 
     // The names of the tabs in the tab list, top to bottom, for the pages this test knows.
     function listed() {
@@ -128,11 +136,8 @@ describe('Link tab order', () => {
         'a target=_blank link and window.open land below their tab, setting %s',
         async (label, invert, expected) => {
             await start(invert);
-            await pages.t2.bringToFront();
-            await pages.t2.click('#blank');
-            await delay(600);
-            await pages.t2.bringToFront();
-            await pages.t2.click('#popup');
+            await clickAt(pages.t2, '#blank');
+            await clickAt(pages.t2, '#popup');
             await expectListed(expected);
         },
         90000
