@@ -1,8 +1,7 @@
 import { ownerOf } from '../shared/space-store.js';
-import { isProtectedFavorite } from '../shared/favorite-safety.js';
+import { collectFavoriteUrlKeys, isProtectedFavorite } from '../shared/favorite-safety.js';
 import { Utils } from '../shared/utils.js';
 import { Logger } from '../shared/logger.js';
-import { ROOT_FOLDER_TITLE } from '../shared/constants.js';
 
 export const AUTO_ARCHIVE_ALARM_NAME = 'autoArchiveTabsAlarm';
 export const TAB_ACTIVITY_STORAGE_KEY = 'tabLastActivity'; // Key to store timestamps
@@ -84,22 +83,9 @@ export function registerAutoArchive(spaceStore) {
             // check here was always empty and never protected favorites from archiving.
             // The Sidecove bookmark folder is the durable record of favorites; collect its
             // URLs normalized with the same pinned-URL key the renderer uses (origin+path).
-            const protectedUrlKeys = new Set();
+            let protectedUrlKeys;
             try {
-                const sidecoveFolder = (await chrome.bookmarks.search({ title: ROOT_FOLDER_TITLE })).find(
-                    node => !node.url
-                );
-                if (sidecoveFolder) {
-                    const [subTree] = await chrome.bookmarks.getSubTree(sidecoveFolder.id);
-                    const collectUrls = node => {
-                        if (!node) return;
-                        if (node.url) {
-                            protectedUrlKeys.add(Utils.getPinnedUrlKey(node.url));
-                        }
-                        if (node.children) node.children.forEach(collectUrls);
-                    };
-                    collectUrls(subTree);
-                }
+                protectedUrlKeys = await collectFavoriteUrlKeys(chrome);
             } catch (bookmarkError) {
                 Logger.warn('Auto-archive: could not read Sidecove bookmark tree for protection:', bookmarkError);
                 return;
