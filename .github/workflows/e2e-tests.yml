@@ -1,9 +1,8 @@
 name: E2E Tests
 
+# Started by hand only. The suite runs locally before a pull request is opened or updated
+# (npm run test:e2e:local), with its result in the pull request description.
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:

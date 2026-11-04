@@ -18,6 +18,7 @@
     "release:tag": "node scripts/release.js tag",
     "test": "npm run test:e2e",
     "test:e2e": "npm run build && NODE_OPTIONS='--experimental-vm-modules' jest --config jest.config.js",
+    "test:e2e:local": "bash scripts/e2e-local.sh",
     "test:e2e:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.config.js --watch",
     "test:e2e:debug": "DEBUG=true npm run test:e2e",
     "test:spaces": "npm run build && NODE_OPTIONS='--experimental-vm-modules' jest tests/e2e/spaces.test.js",

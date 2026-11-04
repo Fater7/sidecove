@@ -11,7 +11,7 @@ Vite, no framework, no runtime dependencies.
 - `npm run build`: production build to `dist/`. `npm run dev`: watch build to `dist-dev/`.
 - `npm run test:unit`: fast unit tests (`node:test`), no browser. Run before every commit.
 - `npm run lint`: ESLint, including the folder-boundary rules below. `npm run format`: Prettier.
-- `npm run test:e2e`: builds, then drives real Chrome with Puppeteer. Slow; CI runs it on every PR.
+- `npm run test:e2e`: builds, then drives real Chrome with Puppeteer. Slow; it runs locally before a PR is opened or updated, with the result in the PR description (`npm run test:e2e:local`).
 - `npm run verify:dist`: fails if anything in `dist/` points at a file the build does not contain.
 - `npm run zip`: packages `dist/` as `sidecove-extension.zip`.
 
