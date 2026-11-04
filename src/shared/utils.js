@@ -1,5 +1,6 @@
 import { isPracticeUrl } from './tour-practice.js';
 import { getSpaceTabs, spaceRequest } from './space-client.js';
+import { tabsInDisplayOrder, adjacentTabId } from './tab-step.js';
 /**
  * Utils - Shared utility functions and storage management
  *
@@ -408,25 +409,14 @@ const Utils = {
         await chrome.storage.sync.set({ invertTabOrder: enabled });
     },
 
-    // Navigate to adjacent tab within a space (next or previous)
+    // Navigate to adjacent tab within a space (next or previous), in the order the panel shows.
     _navigateTabInSpace: async function (tabId, sourceSpace, direction) {
-        const temporaryTabs = sourceSpace?.temporaryTabs ?? [];
-        const spaceBookmarks = sourceSpace?.spaceBookmarks ?? [];
         const currentTab = await chrome.tabs.get(tabId);
-        const windowTabs = new Set((await chrome.tabs.query({ windowId: currentTab.windowId })).map(t => t.id));
-        const allTabs = [...spaceBookmarks, ...temporaryTabs].filter(id => windowTabs.has(id));
-
-        if (allTabs.length === 0) return;
-
-        const currentIndex = allTabs.indexOf(tabId);
-        if (currentIndex === -1) return;
-
-        const nextIndex =
-            direction === 'next'
-                ? (currentIndex + 1) % allTabs.length
-                : (currentIndex - 1 + allTabs.length) % allTabs.length;
-
-        chrome.tabs.update(allTabs[nextIndex], { active: true });
+        const openTabIds = new Set((await chrome.tabs.query({ windowId: currentTab.windowId })).map(t => t.id));
+        const invertTabOrder = await this.getInvertTabOrder();
+        const ordered = tabsInDisplayOrder(sourceSpace, { invertTabOrder, openTabIds });
+        const targetId = adjacentTabId(ordered, tabId, direction);
+        if (targetId !== null) await chrome.tabs.update(targetId, { active: true });
     },
 
     movToNextTabInSpace: async function (tabId, sourceSpace) {

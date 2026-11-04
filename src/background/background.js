@@ -91,22 +91,40 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
 });
 
+async function stepTabInSpace(direction) {
+    try {
+        await stepActiveTab(direction);
+    } catch (error) {
+        Logger.warn('[TabNavigation] Could not step to the next tab:', error);
+    }
+}
+
+async function stepActiveTab(direction) {
+    const found = await Utils.findActiveSpaceAndTab();
+    if (!found?.space) return;
+    if (direction === 'next') await Utils.movToNextTabInSpace(found.tab.id, found.space);
+    else await Utils.movToPrevTabInSpace(found.tab.id, found.space);
+}
+
+// Pages of the extension can ask for the same step as the shortcuts; the end-to-end tests
+// use it because Chrome offers no way to press an extension shortcut.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.command !== 'stepTabInSpace') return;
+    stepTabInSpace(message.direction === 'prev' ? 'prev' : 'next').then(
+        () => sendResponse({ success: true }),
+        error => sendResponse({ success: false, error: error.message })
+    );
+    return true;
+});
+
 chrome.commands.onCommand.addListener(async function (command) {
     if (command === 'quickPinToggle') {
         // Send a message to the sidebar
         chrome.runtime.sendMessage({ command: 'quickPinToggle' });
     } else if (command === 'NextTabInSpace') {
-        Utils.findActiveSpaceAndTab().then(async ({ space, tab }) => {
-            if (space) {
-                await Utils.movToNextTabInSpace(tab.id, space);
-            }
-        });
+        await stepTabInSpace('next');
     } else if (command === 'PrevTabInSpace') {
-        Utils.findActiveSpaceAndTab().then(async ({ space, tab }) => {
-            if (space) {
-                await Utils.movToPrevTabInSpace(tab.id, space);
-            }
-        });
+        await stepTabInSpace('prev');
         Logger.log('sending');
         // Send a message to the sidebar
         chrome.runtime.sendMessage({ command: 'PrevTabInSpace' });
