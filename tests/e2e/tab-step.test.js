@@ -74,7 +74,7 @@ beforeAll(async () => {
         await sleep(300);
     }
     await page.waitForFunction(
-        () => document.querySelectorAll('.space.active [data-tab-type="temporary"] .tab[data-tab-id]').length >= 4,
+        () => document.querySelectorAll('.space.active [data-tab-type="temporary"] .tab[data-tab-id]').length === 4,
         { polling: 100 }
     );
 });

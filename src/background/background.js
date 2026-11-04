@@ -92,6 +92,14 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 });
 
 async function stepTabInSpace(direction) {
+    try {
+        await stepActiveTab(direction);
+    } catch (error) {
+        Logger.warn('[TabNavigation] Could not step to the next tab:', error);
+    }
+}
+
+async function stepActiveTab(direction) {
     const found = await Utils.findActiveSpaceAndTab();
     if (!found?.space) return;
     if (direction === 'next') await Utils.movToNextTabInSpace(found.tab.id, found.space);
