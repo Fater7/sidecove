@@ -74,6 +74,8 @@ import {
     showUndoToast,
     showMenu
 } from './dom-manager.js';
+import { createCloseFocus } from './features/close-tab/close-focus.js';
+import { displayedTabIds } from './features/close-tab/displayed-tabs.js';
 import { BookmarkUtils } from '../shared/bookmark-utils.js';
 import { Logger } from '../shared/logger.js';
 import { MOUSE_BUTTON, CSS_CLASSES, TIMING } from '../shared/constants.js';
@@ -4546,8 +4548,28 @@ function handleTabUpdate(tabId, changeInfo, tab) {
     });
 }
 
+// Chrome picks the next tab itself when the active one closes; keep the space you are in.
+const closeFocus = createCloseFocus({
+    getActiveSpaceId: () => activeSpaceId,
+    ownerOf: tabId => ownerOf(spaces, tabId)?.id,
+    displayedOrder: spaceId => displayedTabIds(spaceId),
+    openTabIds: async () => (await chrome.tabs.query({ windowId: currentWindow.id })).map(tab => tab.id),
+    activateTab: tabId => chrome.tabs.update(tabId, { active: true }),
+    openNewTab: () => createNewTab(),
+    // The service worker already recorded Chrome's pick as that space's last tab.
+    restoreLastTab: async (spaceId, pickedTabId) => {
+        const space = spaces.find(s => s.id === spaceId);
+        if (!space) return;
+        await spaceRequest('patch', {
+            before: [{ ...space, lastTab: pickedTabId }],
+            after: [{ ...space, lastTab: space.lastTab ?? null }]
+        }).catch(error => Logger.warn('Could not restore the last tab of a space:', error));
+    }
+});
+
 async function handleTabRemove(tabId) {
     Logger.log('Tab removed:', tabId);
+    closeFocus.noteRemoval(tabId);
     editorSessions.dispose('tab', tabId);
     await Utils.removePinnedTabState(tabId);
     // Get tab element before removing it
@@ -4622,12 +4644,25 @@ function handleTabActivated(activeInfo) {
         }
 
         Logger.log('Tab activated:', activeInfo);
-        activeChromeTabId = activeInfo.tabId;
+        const previousTabId = activeChromeTabId;
         // Find which space contains this tab
         const spaceWithTab = spaces.find(
             space => space.spaceBookmarks.includes(activeInfo.tabId) || space.temporaryTabs.includes(activeInfo.tabId)
         );
         Logger.log('found space', spaceWithTab);
+
+        if (
+            spaceWithTab &&
+            (await closeFocus.stayAfterClose({
+                previousTabId,
+                activatedTabId: activeInfo.tabId,
+                activatedSpaceId: spaceWithTab.id
+            }))
+        ) {
+            Logger.log('Active tab closed; staying in the current space');
+            return;
+        }
+        activeChromeTabId = activeInfo.tabId;
 
         if (spaceWithTab) {
             spaceWithTab.lastTab = activeInfo.tabId;
