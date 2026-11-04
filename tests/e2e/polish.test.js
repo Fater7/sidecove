@@ -424,6 +424,100 @@ test('New Tab sits under the divider, above the open tabs, once in each space', 
     );
 });
 
+// As in Arc: the divider ends in a small "↓ Clear" (it was the "Clean All" button). Its
+// behaviour is covered under 'Clear' in arc-parity.test.js; this checks the look, the keyboard
+// and screen reader access, and that the label is readable on the space colour in both themes.
+describe('Clear on the divider', () => {
+    const readClear = () =>
+        page.evaluate(() => {
+            const space = document.querySelector('.space.active');
+            const button = space.querySelector('.clean-tabs-btn');
+            const header = space.querySelector('.temp-header');
+            const line = header.querySelector('.divider-line').getBoundingClientRect();
+            const box = button.getBoundingClientRect();
+            const newTab = space.querySelector('.new-tab-btn').getBoundingClientRect();
+            // Canvas turns any CSS colour (rgba, color-mix) into plain red, green, blue, alpha.
+            const rgba = color => {
+                const context = document.createElement('canvas').getContext('2d');
+                context.clearRect(0, 0, 1, 1);
+                context.fillStyle = color;
+                context.fillRect(0, 0, 1, 1);
+                return [...context.getImageData(0, 0, 1, 1).data];
+            };
+            let ground = button;
+            while (ground && rgba(getComputedStyle(ground).backgroundColor)[3] < 255) {
+                ground = ground.parentElement;
+            }
+            const luminance = ([r, g, b]) =>
+                [r, g, b]
+                    .map(c => c / 255)
+                    .map(c => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+                    .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+            const back = rgba(getComputedStyle(ground ?? document.body).backgroundColor);
+            const [r, g, b, a] = rgba(getComputedStyle(button).color);
+            const text = [r, g, b].map((c, i) => c * (a / 255) + back[i] * (1 - a / 255));
+            const [light, dark] = [luminance(text), luminance(back)].sort((x, y) => y - x);
+            return {
+                text: button.textContent.replace(/\s+/g, ' ').trim(),
+                name: button.getAttribute('aria-label'),
+                type: button.type,
+                arrowHidden: button.querySelector('.clean-tabs-arrow').getAttribute('aria-hidden'),
+                atRightEnd: box.left >= line.right - 0.5 && header.getBoundingClientRect().right - box.right < 16,
+                aboveNewTab: box.bottom <= newTab.top + 0.5,
+                fontSize: parseFloat(getComputedStyle(button).fontSize),
+                contrast: (light + 0.05) / (dark + 0.05)
+            };
+        });
+
+    test('is a small muted label at the right end of the divider, above New Tab, with a clear name', async () => {
+        await page.bringToFront();
+        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+        const clear = await readClear();
+        expect(clear.text).toBe('↓ Clear');
+        expect(clear.name).toBe('Clear open tabs');
+        expect(clear.type).toBe('button');
+        expect(clear.arrowHidden).toBe('true');
+        expect(clear.atRightEnd).toBe(true);
+        expect(clear.aboveNewTab).toBe(true);
+        expect(clear.fontSize).toBeLessThanOrEqual(12);
+        expect(
+            await page.$$eval('.clean-tabs-btn', buttons => buttons.every(b => !/clean all/i.test(b.textContent)))
+        ).toBe(true);
+    });
+
+    test.each(['light', 'dark'])('is readable (4.5:1 or better) in %s mode', async scheme => {
+        await page.bringToFront();
+        try {
+            await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
+            await sleep(200);
+            expect((await readClear()).contrast).toBeGreaterThanOrEqual(4.5);
+        } finally {
+            // A failure here must not leave later tests in the wrong theme.
+            await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+        }
+    });
+
+    test('can be reached with Tab and shows a focus ring', async () => {
+        await page.bringToFront();
+        await page.$eval('.space.active .clean-tabs-btn', button => button.focus());
+        await page.keyboard.press('Tab');
+        // Tab moves on to the New Tab row, which is the next control; Shift+Tab comes back.
+        expect(await page.evaluate(() => document.activeElement.className)).toContain('new-tab-btn');
+        await page.keyboard.down('Shift');
+        await page.keyboard.press('Tab');
+        await page.keyboard.up('Shift');
+        const focus = await page.evaluate(() => {
+            const el = document.activeElement;
+            return {
+                reached: el.classList.contains('clean-tabs-btn'),
+                ring: getComputedStyle(el).outlineStyle,
+                matches: el.matches(':focus-visible')
+            };
+        });
+        expect(focus).toEqual({ reached: true, ring: 'solid', matches: true });
+    });
+});
+
 // Chrome keeps Cmd/Ctrl+Shift+C for DevTools and will not make it an extension's default
 // (a person can still choose it on chrome://extensions/shortcuts), so the default is
 // Alt+Shift+C, beside Sidecove's Alt+S and Alt+D. Off macOS, Chrome declines some Alt
