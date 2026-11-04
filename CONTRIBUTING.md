@@ -65,3 +65,7 @@ A release is a pull request; the tag comes after it merges, and GitHub Actions b
 6. Submitting to the Chrome Web Store is a manual step in the developer dashboard, after the GitHub release exists. Upload the zip, paste the title, summary and description from `docs/store-listing.txt`, and check the screenshots as step 3 says. A pull request that adds or changes a feature edits `docs/store-listing.txt` in the same change; at release, check it against the CHANGELOG section and fix anything stale before pasting.
 
 Every pull request also runs the workflow's build as a **Release dry run**, so a broken release shows up before anything is tagged. Release tags cannot be moved or deleted once pushed. Only `vX.Y.Z` tags start a release: Chrome versions are numbers only, so there are no `-rc` or `-beta` prereleases.
+
+### 1.3.0: new screenshots in dark mode
+
+1.3.0 changes how Sidecove looks: in dark mode every space colour is now a dark surface tinted with that colour, and Settings → Colors has a light and a dark picker for each colour. Before 1.3.0 is submitted to the Chrome Web Store, take new store screenshots and replace the images in `docs/` that the README shows (`screenshot-sidebar.png`, `screenshot-spaces.png`) from the 1.3.0 build, in dark mode. Do not submit with the old ones. Delete this note once 1.3.0 is out.
