@@ -22,7 +22,6 @@ import { setSpaceColorVars } from './features/color-overrides/space-color-vars.j
 const spacesList = document.getElementById('spacesList');
 const spaceSwitcher = document.getElementById('spaceSwitcher');
 const addSpaceBtn = document.getElementById('addSpaceBtn');
-const newTabBtn = document.getElementById('newTabBtn');
 const spaceTemplate = document.getElementById('spaceTemplate');
 
 export function setupDOMElements(createNewSpace, getSpaces = () => []) {
@@ -93,9 +92,6 @@ export function setupDOMElements(createNewSpace, getSpaces = () => []) {
     });
 
     document.getElementById('createSpaceBtn').addEventListener('click', createNewSpace);
-    newTabBtn.addEventListener('click', () => {
-        chrome.tabs.create({});
-    });
 
     const createSpaceColorSwatch = document.getElementById('createSpaceColorSwatch');
     createSpaceColorSwatch.addEventListener('click', e => {

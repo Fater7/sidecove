@@ -113,7 +113,7 @@ export const SELECTORS = {
     SPACE_SWITCHER: '#spaceSwitcher',
     PINNED_FAVICONS: '#pinnedFavicons',
     ADD_SPACE_BTN: '#addSpaceBtn',
-    NEW_TAB_BTN: '#newTabBtn',
+    NEW_TAB_BTN: '.space.active .new-tab-btn',
     ADD_SPACE_INPUT_CONTAINER: '#addSpaceInputContainer',
     NEW_SPACE_NAME: '#newSpaceName',
     SPACE_COLOR: '#spaceColor',
