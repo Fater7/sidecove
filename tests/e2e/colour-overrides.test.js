@@ -162,8 +162,6 @@ test('the sidebar background follows a change of system theme without a reload',
 
 test('Settings shows a Light and a Dark picker for each colour, each with its own Reset', async () => {
     const page = await openOptionsPage(browser, extensionId);
-    // A background tab draws no frames, so clicking a Reset below the fold would wait forever.
-    await page.bringToFront();
     try {
         await page.evaluate(() => chrome.storage.sync.set({ colorOverrides: null, colorOverridesDark: null }));
         await page.reload();
@@ -194,6 +192,12 @@ test('Settings shows a Light and a Dark picker for each colour, each with its ow
                 id,
                 value
             );
+        // Clicked in the page: Puppeteer's click scrolls first, which can hang for a Reset below the fold.
+        const clickReset = mode =>
+            page.evaluate(
+                mode => document.querySelector(`.color-reset-btn[data-color="blue"][data-mode="${mode}"]`).click(),
+                mode
+            );
         const stored = () => page.evaluate(() => chrome.storage.sync.get(['colorOverrides', 'colorOverridesDark']));
         const waitForStored = expected =>
             page.waitForFunction(
@@ -210,11 +214,11 @@ test('Settings shows a Light and a Dark picker for each colour, each with its ow
         await waitForStored({ colorOverrides: { blue: '#ff8800' }, colorOverridesDark: { blue: '#123456' } });
 
         // Resetting the dark picker leaves the light value alone.
-        await page.click('.color-reset-btn[data-color="blue"][data-mode="dark"]');
+        await clickReset('dark');
         await waitForStored({ colorOverrides: { blue: '#ff8800' }, colorOverridesDark: null });
         expect(await page.evaluate(() => document.getElementById('colorBlueDark').value)).toBe('#002b4a');
 
-        await page.click('.color-reset-btn[data-color="blue"][data-mode="light"]');
+        await clickReset('light');
         await waitForStored({ colorOverrides: null, colorOverridesDark: null });
         expect(await stored()).toEqual({ colorOverrides: null, colorOverridesDark: null });
     } finally {
