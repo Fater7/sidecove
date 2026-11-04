@@ -163,7 +163,7 @@ describe('space navigation', () => {
     });
 });
 
-describe('Clean All', () => {
+describe('Clear', () => {
     const tempRows = () =>
         page.$$eval('.space.active [data-tab-type="temporary"] .tab[data-tab-id]', rows =>
             rows.map(row => row.dataset.url)

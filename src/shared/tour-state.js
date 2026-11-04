@@ -50,7 +50,7 @@ export const TOUR_STEPS = [
         title: 'A fresh space, a way back',
         tip: 'Right-click “Practice: archive this tab” → Archive Tab. Then open the highlighted history button and click the entry to restore it.',
         caption: 'Archive a tab for later, then bring it back with a click.',
-        detail: 'Manual archives remain accessible with auto-archiving off. Enable automatic cleanup in Settings and choose an inactivity interval; pinned tabs and tabs playing audio stay open. Clean All closes temporary tabs in the current space.',
+        detail: 'Manual archives remain accessible with auto-archiving off. Enable automatic cleanup in Settings and choose an inactivity interval; pinned tabs and tabs playing audio stay open. Clear, at the right end of the divider above New Tab, closes the open tabs in the current space.',
         target: '.space .sidebar-button'
     },
     {

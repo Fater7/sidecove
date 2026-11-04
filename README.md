@@ -20,7 +20,7 @@ Sidecove is an independent project, not affiliated with or endorsed by The Brows
 - Search open tabs and favorites across spaces (Cmd or Ctrl+F)
 - Keyboard and mouse side-button space switching
 - A shortcut for the most recently used tab in the current space, like Arc's Ctrl+Tab (assign a key at `chrome://extensions/shortcuts`; Chrome keeps Ctrl+Tab for itself)
-- Auto-archive for idle tabs, and Clean All with Undo
+- Auto-archive for idle tabs, and "↓ Clear" (on the divider above New Tab) with Undo
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 

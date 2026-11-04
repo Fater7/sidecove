@@ -45,7 +45,7 @@ FAVOURITES AND PINNED TABS
 KEEPS TABS TIDY
 - Auto-archive is optional and off until you turn it on in Settings. It then closes tabs you have not used for the time you choose. Favourites and pinned tabs are never closed this way.
 - Archived tabs are listed so you can open them again.
-- Clean All closes a space's temporary tabs into the archive, with Undo.
+- "↓ Clear", on the divider above New Tab, closes a space's open tabs into the archive, with Undo.
 - Search your open tabs, pinned tabs and favourites across every space (Cmd or Ctrl+F).
 - Select several tabs with Cmd or Ctrl click and Shift click, then move, pin, archive, close or put them in a folder together.
 
