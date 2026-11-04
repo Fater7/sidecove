@@ -487,10 +487,14 @@ describe('Clear on the divider', () => {
 
     test.each(['light', 'dark'])('is readable (4.5:1 or better) in %s mode', async scheme => {
         await page.bringToFront();
-        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
-        await sleep(200);
-        expect((await readClear()).contrast).toBeGreaterThanOrEqual(4.5);
-        await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+        try {
+            await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: scheme }]);
+            await sleep(200);
+            expect((await readClear()).contrast).toBeGreaterThanOrEqual(4.5);
+        } finally {
+            // A failure here must not leave later tests in the wrong theme.
+            await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
+        }
     });
 
     test('can be reached with Tab and shows a focus ring', async () => {
