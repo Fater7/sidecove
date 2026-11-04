@@ -146,6 +146,7 @@ const Utils = {
             debugLoggingEnabled: false, // Default: disabled (controls debug logging)
             showAllOpenTabsInCollapsedFolders: false, // Default: Arc behavior (only show active tab in collapsed folder)
             spaceSwitcherStyle: 'icons', // Default: Arc behavior (icons, or a dot for a space without one); 'names' shows full names
+            closeEmptyNewTabs: true, // Default: enabled (a new tab left empty closes when you switch away)
             pinMatchFullQueryHosts: [] // Default: none (pinned URL keys ignore query strings, as before)
         };
         const result = await chrome.storage.sync.get(defaultSettings);

@@ -53,6 +53,7 @@ import { parseSpaceCommand, switchSpaceWithoutSidebar } from '../shared/space-na
 import { registerAutoArchive, TAB_ACTIVITY_STORAGE_KEY } from './auto-archive.js';
 import { openOnboardingIfDue } from './onboarding-lifecycle.js';
 import { RECENT_TAB_COMMAND, registerRecentTab } from './recent-tab.js';
+import { registerCloseEmptyNewTab } from './close-empty-new-tab.js';
 
 // Helper to handle async message responses with consistent error handling
 function handleAsyncMessage(handler, sendResponse, errorContext, defaultErrorData = {}) {
@@ -70,6 +71,9 @@ function handleAsyncMessage(handler, sendResponse, errorContext, defaultErrorDat
 
 // Most recently used tab shortcut: keeps the use order and returns the command handler.
 const onRecentTabCommand = registerRecentTab({ spaceStore });
+
+// A new tab left empty closes when the user switches to another tab (a setting turns this off).
+registerCloseEmptyNewTab({ spaceStore });
 
 // Configure Chrome side panel behavior
 chrome.sidePanel

@@ -109,6 +109,7 @@ async function saveOptions() {
         perSpacePinnedFavorites: getCheckboxValue(document.getElementById('perSpacePinnedFavorites'), false),
         syncTabGroups: getCheckboxValue(document.getElementById('syncTabGroups'), false),
         invertTabOrder: getCheckboxValue(document.getElementById('invertTabOrder'), true),
+        closeEmptyNewTabs: getCheckboxValue(document.getElementById('closeEmptyNewTabs'), true),
         showAllOpenTabsInCollapsedFolders: getCheckboxValue(
             document.getElementById('showAllOpenTabsInCollapsedFolders'),
             false
@@ -159,6 +160,7 @@ async function restoreOptions() {
     setCheckboxValue(document.getElementById('perSpacePinnedFavorites'), settings.perSpacePinnedFavorites, false);
     setCheckboxValue(document.getElementById('syncTabGroups'), settings.syncTabGroups, false);
     setCheckboxValue(document.getElementById('invertTabOrder'), settings.invertTabOrder, true);
+    setCheckboxValue(document.getElementById('closeEmptyNewTabs'), settings.closeEmptyNewTabs, true);
     setCheckboxValue(
         document.getElementById('showAllOpenTabsInCollapsedFolders'),
         settings.showAllOpenTabsInCollapsedFolders,
@@ -274,7 +276,13 @@ function setupAutoSave() {
     addListenerIfExists('perSpacePinnedFavorites', 'change', saveOptions);
 
     // Auto-save for checkboxes (most just save immediately)
-    const checkboxIds = ['syncTabGroups', 'invertTabOrder', 'showAllOpenTabsInCollapsedFolders', 'debugLoggingEnabled'];
+    const checkboxIds = [
+        'syncTabGroups',
+        'invertTabOrder',
+        'closeEmptyNewTabs',
+        'showAllOpenTabsInCollapsedFolders',
+        'debugLoggingEnabled'
+    ];
     checkboxIds.forEach(id => addListenerIfExists(id, 'change', saveOptions));
 
     // Auto-archive checkbox needs special handling to update visibility
