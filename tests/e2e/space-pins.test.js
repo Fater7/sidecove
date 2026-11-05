@@ -1,4 +1,5 @@
 import { launchBrowserWithExtension, openSidebar, openOptionsPage } from './helpers/extension-helper.js';
+import { dragOnto } from './helpers/drag.js';
 
 let browser, page, options, first, second, pinA, pinB;
 const visiblePins = () =>
@@ -20,6 +21,13 @@ const switchTo = async id => {
     // Allow Chrome's activation event from the selected space's last tab to settle.
     await new Promise(resolve => setTimeout(resolve, 300));
 };
+
+const dropPinOnChip = (tabId, spaceId) =>
+    dragOnto(
+        page,
+        `#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`,
+        `#spaceSwitcher button[data-space-id="${spaceId}"]`
+    );
 
 beforeAll(async () => {
     const result = await launchBrowserWithExtension();
@@ -102,6 +110,42 @@ test('toggling sharing preserves assignments and the saved option', async () => 
     await waitForPins([pinB]);
     await switchTo(first);
     await waitForPins([pinA]);
+});
+
+test('with separate favorites, a pin dropped on a space chip stays pinned and moves to that space', async () => {
+    // Separate favorites on, with the first space selected so only pinA shows.
+    if (!(await options.$eval('#perSpacePinnedFavorites', input => input.checked)))
+        await options.$eval('#perSpacePinnedFavorites', input => input.click());
+    await switchTo(first);
+    await waitForPins([pinA]);
+    try {
+        await dropPinOnChip(pinA, second);
+        await waitForPins([]);
+        await switchTo(second);
+        await waitForPins([pinA, pinB]);
+        expect(await page.evaluate(id => chrome.tabs.get(id).then(tab => tab.pinned), pinA)).toBe(true);
+        const owner = await page.evaluate(async id => {
+            const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
+            return spaces.find(space => space.pinnedTabs.includes(id))?.id;
+        }, pinA);
+        expect(owner).toBe(second);
+    } finally {
+        // Put the pin back so the tests below start from the same assignments.
+        await page.evaluate(
+            async ({ id, spaceId }) => {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'spaceStore',
+                    action: 'assignPin',
+                    tabId: id,
+                    spaceId
+                });
+                if (!response.success) throw new Error(response.error);
+            },
+            { id: pinA, spaceId: first }
+        );
+        await switchTo(first);
+        await waitForPins([pinA]);
+    }
 });
 
 test('unpinning removes the icon and returns the tab to its space', async () => {

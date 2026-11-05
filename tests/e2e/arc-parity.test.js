@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { launchBrowserWithExtension, openSidebar } from './helpers/extension-helper.js';
+import { dragOnto as dragOntoPage } from './helpers/drag.js';
 
 // Arc-parity features in Sidecove 1.1. No internet dependency: pages come from a local server.
 let server, base, browser, extensionId, page;
@@ -311,27 +312,7 @@ describe('tab menu and sound', () => {
     });
 });
 
-// Drag and drop is dispatched as DOM events so it works while Chrome focuses other tabs.
-async function dragOnto(sourceSelector, targetSelector, { handle = null } = {}) {
-    await page.evaluate(
-        ({ sourceSelector, targetSelector, handle }) => {
-            const source = document.querySelector(sourceSelector);
-            const grip = handle ? source.querySelector(handle) : source;
-            const target = document.querySelector(targetSelector);
-            if (!source || !target) throw new Error(`missing ${!source ? sourceSelector : targetSelector}`);
-            const dataTransfer = new DataTransfer();
-            const r = target.getBoundingClientRect();
-            const point = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
-            grip.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
-            target.dispatchEvent(
-                new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, ...point })
-            );
-            target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, ...point }));
-            grip.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer }));
-        },
-        { sourceSelector, targetSelector, handle }
-    );
-}
+const dragOnto = (source, target, options) => dragOntoPage(page, source, target, options);
 
 const storedSpaces = () =>
     page.evaluate(async () => (await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' })).spaces);
@@ -419,27 +400,47 @@ describe('moving things between spaces', () => {
         );
     });
 
-    test('a Chrome-pinned favicon dropped on a chip is unpinned into that space', async () => {
+    // With shared favorites (the default) a pin is a favorite in every space, so the drop changes nothing you see.
+    test('a Chrome-pinned favicon dropped on a chip stays pinned and in the favorites bar of every space', async () => {
         const tabId = await page.evaluate(
             async url => (await chrome.tabs.create({ url, pinned: true, active: false })).id,
             `${base}/pinned-chip`
         );
-        await page.waitForSelector(`#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`);
-        await dragOnto(`#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`, await chip('Music'));
-        await page.waitForFunction(
-            async ({ tabId, musicId }) => {
-                const tab = await chrome.tabs.get(tabId);
-                const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
-                return !tab.pinned && spaces.find(s => s.id === musicId).temporaryTabs.includes(tabId);
-            },
-            { polling: 100 },
-            { tabId, musicId: music.id }
-        );
-        await sleep(1200);
-        const owner = (await storedSpaces()).find(
-            s => s.temporaryTabs.includes(tabId) || s.spaceBookmarks.includes(tabId)
-        );
-        expect(owner.name).toBe('Music');
+        const favicon = `#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`;
+        try {
+            await page.waitForSelector(favicon);
+            await dragOnto(favicon, await chip('Music'));
+            // The drop reached the panel: the store now records the pin under Music.
+            await page.waitForFunction(
+                async ({ tabId, musicId }) => {
+                    const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
+                    return spaces.find(s => s.id === musicId).pinnedTabs.includes(tabId);
+                },
+                { polling: 100 },
+                { tabId, musicId: music.id }
+            );
+            // Let a wrong unpin, which follows the same drop, show up before asserting there is none.
+            await sleep(500);
+            expect(await page.evaluate(async id => (await chrome.tabs.get(id)).pinned, tabId)).toBe(true);
+            expect(await page.$(favicon)).not.toBeNull();
+            expect(await activeSpaceName()).toBe('Home');
+            for (const name of ['Music', 'Home']) {
+                await page.$eval(await chip(name), button => button.click());
+                await page.waitForFunction(
+                    name => document.querySelector('.space.active .space-name').value === name,
+                    { polling: 100 },
+                    name
+                );
+                expect(await page.$(favicon)).not.toBeNull();
+            }
+            // The pin did not become an ordinary tab of any space.
+            const owners = (await storedSpaces()).filter(
+                s => s.temporaryTabs.includes(tabId) || s.spaceBookmarks.includes(tabId)
+            );
+            expect(owners).toEqual([]);
+        } finally {
+            await page.evaluate(id => chrome.tabs.remove(id), tabId);
+        }
     });
 });
 
