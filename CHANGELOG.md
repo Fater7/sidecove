@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (1.3.0)
+## Unreleased
+
+## 1.3.0
 
 - **Switching to a space with no open tab opens a New Tab in it, as in Arc.** Before, the panel changed to the empty space but kept the page of the space you came from on screen. Now a New Tab opens in the space you switch to, from the space bar or the keyboard shortcuts, and it closes by itself when you switch away without typing in it (with "Close new tabs you leave empty" on, the default). A New Tab you have used stays. Spaces that have an open tab still show their last tab. It needs no new permission.
 - **The space bar keeps a few spaces together in the middle, as Arc does.** With the icons-only space bar (the default), two or three spaces used to sit at the two ends of the bar with the whole width empty between them. They now sit side by side in the middle. With enough spaces to fill the bar they spread and scroll as before, and the first one is never cut off. The space bar with names (Settings → Space bar shows) is unchanged. No new permission.
