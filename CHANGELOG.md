@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **README picture in light mode.** The first picture in the README now shows Sidecove in light mode, so the two pictures show both looks. You will not notice this in the extension itself.
+
 ## 1.3.0
 
 New Tab and Clear now work the way they do in Arc, spaces get their own dark colours, and links, closing tabs and the space bar behave more like Arc too. Optionally, each space can keep its own favorites. No new permissions.
