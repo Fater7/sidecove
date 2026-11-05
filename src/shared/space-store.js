@@ -4,6 +4,7 @@ import { placeLinkTab } from './link-tab-placement.js';
 import { LocalStorage } from './localstorage.js';
 
 import { sections, ownerOf, updateNativePinSection, spaceForActivation } from './space-membership.js';
+import { restoreTabOrder } from './pending-clean.js';
 export { tabIds, ownerOf } from './space-membership.js';
 const clone = value => structuredClone(value);
 
@@ -57,6 +58,8 @@ export class SpaceStore {
     constructor() {
         this.chain = Promise.resolve();
         this.initialized = false;
+        // Tabs Clean All is hiding until its Undo toast ends. They are open but belong to no space.
+        this.hidden = new Set();
     }
     run(operation) {
         const pending = this.chain.then(async () => {
@@ -95,7 +98,8 @@ export class SpaceStore {
             'spaceRestoreQueue',
             'activeSpaces',
             'lastActiveSpace',
-            'restoredTabRanks'
+            'restoredTabRanks',
+            'hiddenTabs'
         ]);
         this.spaces = data.spaces || [];
         this.snapshotByTab = new Map((data.spaceTabSnapshot || []).filter(t => t.tabId).map(t => [t.tabId, t]));
@@ -162,6 +166,8 @@ export class SpaceStore {
             this.spaces.push(await this.makeSpace(this.defaultSpaceName));
         }
         const valid = new Set(live.map(t => t.id));
+        // A worker that restarts while Clean All is waiting must not take its tabs back in.
+        this.hidden = new Set((session.hiddenTabs || []).filter(id => valid.has(id)));
         for (const space of this.spaces)
             for (const key of sections) space[key] = (space[key] || []).filter(id => valid.has(id));
         for (const tab of live) this.track(tab);
@@ -198,6 +204,7 @@ export class SpaceStore {
         return before !== JSON.stringify(this.spaces);
     }
     track(tab) {
+        if (this.hidden.has(tab.id)) return;
         const url = tab.url || tab.pendingUrl;
         if (url?.startsWith(chrome.runtime?.getURL?.('') || 'chrome-extension://invalid/') && !isPracticeUrl(url)) {
             for (const space of this.spaces)
@@ -299,7 +306,8 @@ export class SpaceStore {
             activeSpaces: this.active,
             lastActiveSpace: this.lastActive,
             spaceRestoreQueue: this.restoreQueue,
-            restoredTabRanks: [...this.restoredRanks]
+            restoredTabRanks: [...this.restoredRanks],
+            hiddenTabs: [...this.hidden]
         });
         try {
             await syncSpaceGroups(this.spaces, this.active);
@@ -333,6 +341,34 @@ export class SpaceStore {
                     // A panel starting up reports its window's space; only a real switch is "last used".
                     if (!message.initial) this.lastActive = message.spaceId;
                     break;
+                case 'hide':
+                    for (const id of message.tabIds) {
+                        for (const space of this.spaces) {
+                            for (const key of sections) space[key] = space[key].filter(t => t !== id);
+                            // A hidden tab must not be what the space reopens on.
+                            if (space.lastTab === id) delete space.lastTab;
+                        }
+                        this.hidden.add(id);
+                    }
+                    break;
+                case 'unhide': {
+                    for (const id of message.tabIds) this.hidden.delete(id);
+                    const target = this.spaces.find(s => s.id === message.spaceId);
+                    // Nothing to show again: leave the list in the order it is in now.
+                    if (!message.tabIds.length) break;
+                    if (target) {
+                        for (const space of this.spaces)
+                            for (const key of sections)
+                                space[key] = space[key].filter(t => !message.tabIds.includes(t));
+                        target.temporaryTabs = restoreTabOrder(target.temporaryTabs, message.order, message.tabIds);
+                    } else {
+                        // The space is gone: the tabs join whichever space a new tab would.
+                        for (const tab of await chrome.tabs.query({})) {
+                            if (message.tabIds.includes(tab.id)) this.track(tab);
+                        }
+                    }
+                    break;
+                }
                 case 'assignPin':
                 case 'assign': {
                     const target = this.spaces.find(s => s.id === message.spaceId);
@@ -391,6 +427,7 @@ export class SpaceStore {
                     this.restoreQueue.push(record);
                 this.snapshotByTab.delete(id);
                 this.provisional.delete(id);
+                this.hidden.delete(id);
                 this.openers.delete(id);
                 for (const space of this.spaces) {
                     for (const key of sections) space[key] = space[key].filter(t => t !== id);

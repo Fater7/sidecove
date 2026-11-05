@@ -54,6 +54,7 @@ import { registerAutoArchive, TAB_ACTIVITY_STORAGE_KEY } from './auto-archive.js
 import { openOnboardingIfDue } from './onboarding-lifecycle.js';
 import { RECENT_TAB_COMMAND, registerRecentTab } from './recent-tab.js';
 import { registerCloseEmptyNewTab } from './close-empty-new-tab.js';
+import { registerPendingClean } from './pending-clean.js';
 
 // Helper to handle async message responses with consistent error handling
 function handleAsyncMessage(handler, sendResponse, errorContext, defaultErrorData = {}) {
@@ -71,6 +72,9 @@ function handleAsyncMessage(handler, sendResponse, errorContext, defaultErrorDat
 
 // Most recently used tab shortcut: keeps the use order and returns the command handler.
 const onRecentTabCommand = registerRecentTab({ spaceStore });
+
+// Clean All hides the tabs it clears while Undo is on offer, then closes them.
+registerPendingClean({ spaceStore });
 
 // A new tab left empty closes when the user switches to another tab (a setting turns this off).
 registerCloseEmptyNewTab({ spaceStore });
@@ -205,7 +209,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const tabs = await chrome.tabs.query({});
                 const query = message.query?.toLowerCase() || '';
                 const filteredTabs = tabs.filter(tab => {
-                    if (!tab.title || !tab.url) return false;
+                    if (!tab.title || !tab.url || spaceStore.hidden.has(tab.id)) return false;
                     if (!query) return true;
                     return tab.title.toLowerCase().includes(query) || tab.url.toLowerCase().includes(query);
                 });
@@ -222,7 +226,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 const activityData = storage[TAB_ACTIVITY_STORAGE_KEY] || {};
 
                 const tabsWithActivity = tabs
-                    .filter(tab => tab.url && tab.title)
+                    .filter(tab => tab.url && tab.title && !spaceStore.hidden.has(tab.id))
                     .map(tab => ({ ...tab, lastActivity: activityData[tab.id] || 0 }))
                     .sort((a, b) => (b.lastActivity || 0) - (a.lastActivity || 0))
                     .slice(0, message.limit || 5);
