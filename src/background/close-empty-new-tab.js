@@ -1,6 +1,7 @@
 import { Utils } from '../shared/utils.js';
 import { Logger } from '../shared/logger.js';
-import { isNewTabPage, isUntouchedPage, shouldCloseEmptyNewTab } from './empty-new-tab.js';
+import { isNewTabPage, isUntouchedPage } from '../shared/new-tab-page.js';
+import { shouldCloseEmptyNewTab } from './empty-new-tab.js';
 
 export const EMPTY_TAB_STORAGE_KEY = 'emptyNewTabs'; // storage.session: tab ids end with the browser session.
 const RETRY_DELAY_MS = 300;

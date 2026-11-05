@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isNewTabPage, isUntouchedPage, shouldCloseEmptyNewTab } from '../../../src/background/empty-new-tab.js';
+import { isNewTabPage, isUntouchedPage } from '../../../src/shared/new-tab-page.js';
+import { shouldCloseEmptyNewTab } from '../../../src/background/empty-new-tab.js';
 
 const emptyTab = { id: 5, url: 'chrome://newtab/', pinned: false };
 const ask = (overrides = {}) =>

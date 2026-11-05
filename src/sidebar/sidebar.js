@@ -398,8 +398,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSidebarTour().catch(error => Logger.error('Tour initialization failed:', error));
 
     // Add Chrome tab event listeners
+    chrome.tabs
+        .query({ windowId: currentWindow.id })
+        .then(tabs => tabs.forEach(tab => closeFocus.trackTab(tab)))
+        .catch(error => Logger.warn('Could not read the open tabs:', error));
+    chrome.tabs.onCreated.addListener(tab => closeFocus.trackTab(tab));
     chrome.tabs.onCreated.addListener(handleTabCreated);
     chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        closeFocus.trackTab(tab);
         handleTabUpdate(tabId, changeInfo, tab);
         if (tab.pinned || changeInfo.pinned !== undefined) updatePinnedFavicons(); // Update favicons when a tab is pinned/unpinned
     });

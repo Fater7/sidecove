@@ -99,7 +99,8 @@ export class SpaceStore {
             'activeSpaces',
             'lastActiveSpace',
             'restoredTabRanks',
-            'hiddenTabs'
+            'hiddenTabs',
+            'linkTails'
         ]);
         this.spaces = data.spaces || [];
         this.snapshotByTab = new Map((data.spaceTabSnapshot || []).filter(t => t.tabId).map(t => [t.tabId, t]));
@@ -117,8 +118,8 @@ export class SpaceStore {
         this.perSpacePinnedFavorites = settings.perSpacePinnedFavorites === true;
         this.invertTabOrder = settings.invertTabOrder !== false;
         const live = await chrome.tabs.query({});
-        // Kept in memory only; read back from Chrome so a restarted worker still knows who opened what.
-        this.openers = new Map(live.filter(t => t.openerTabId !== undefined).map(t => [t.id, t.openerTabId]));
+        // Opener tab -> the last link opened from it since the user last switched to it.
+        this.linkTails = new Map(session.linkTails || []);
         if (data.spaceModelVersion !== 2) {
             const idMap = new Map();
             const migrated = [];
@@ -259,9 +260,23 @@ export class SpaceStore {
         } else if (key === 'temporaryTabs' && tab.openerTabId !== undefined && !(url && isNewTabPage)) {
             // A link opened from a tab goes below it, whichever way the list is drawn. Chrome reports
             // no address yet for some link tabs, so only a named new-tab page is left out.
-            this.openers.set(tab.id, tab.openerTabId);
-            space[key] = placeLinkTab(space[key], tab.openerTabId, tab.id, this.openers, this.invertTabOrder);
+            const tail = this.linkTails.get(tab.openerTabId);
+            space[key] = placeLinkTab(space[key], tab.openerTabId, tab.id, tail, this.invertTabOrder);
+            this.linkTails.set(tab.openerTabId, tab.id);
+            // A link from a link stays with the group of the tab that opened the first one.
+            for (const [opener, tail] of this.linkTails)
+                if (tail === tab.openerTabId) this.linkTails.set(opener, tab.id);
         } else space[key].push(tab.id);
+    }
+    // When the last link opened from a tab closes, the link above it on screen becomes the last one.
+    moveTailsOff(id) {
+        const list = this.spaces.map(s => s.temporaryTabs).find(tabs => tabs.includes(id)) || [];
+        const above = list[list.indexOf(id) + (this.invertTabOrder ? 1 : -1)];
+        for (const [opener, tail] of this.linkTails) {
+            if (tail !== id) continue;
+            if (above === undefined || above === opener) this.linkTails.delete(opener);
+            else this.linkTails.set(opener, above);
+        }
     }
     async persist() {
         const tabs = new Map((await chrome.tabs.query({})).map(t => [t.id, t]));
@@ -307,7 +322,8 @@ export class SpaceStore {
             lastActiveSpace: this.lastActive,
             spaceRestoreQueue: this.restoreQueue,
             restoredTabRanks: [...this.restoredRanks],
-            hiddenTabs: [...this.hidden]
+            hiddenTabs: [...this.hidden],
+            linkTails: [...this.linkTails]
         });
         try {
             await syncSpaceGroups(this.spaces, this.active);
@@ -428,7 +444,8 @@ export class SpaceStore {
                 this.snapshotByTab.delete(id);
                 this.provisional.delete(id);
                 this.hidden.delete(id);
-                this.openers.delete(id);
+                this.linkTails.delete(id);
+                this.moveTailsOff(id);
                 for (const space of this.spaces) {
                     for (const key of sections) space[key] = space[key].filter(t => t !== id);
                     if (space.lastTab === id) delete space.lastTab;
@@ -445,6 +462,8 @@ export class SpaceStore {
         );
         chrome.tabs.onActivated.addListener(info =>
             handle(async () => {
+                // Coming back to a tab starts its links again directly beneath it.
+                this.linkTails.delete(info.tabId);
                 const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
                 const space = spaceForActivation(this.spaces, info.tabId, perSpacePinnedFavorites);
                 if (!space) return;

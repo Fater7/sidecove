@@ -1,14 +1,16 @@
 /**
  * E2E tests for where a tab opened from a link lands in the tab list (issue 35).
- * A link opened from a tab in the list sits directly below it, several links stack in
- * opening order, and the "Show new tabs at the top" setting does not matter. A link opened
- * from a favourite goes to the top of the tab list. New tabs still obey the setting.
+ * A link opened from a tab in the list sits below it, and several links from one tab stack in
+ * opening order while you stay on it. As in Chrome, switching to another tab and back starts
+ * again: the next link goes directly below the tab. The "Show new tabs at the top" setting
+ * does not matter. A link opened from a favourite goes to the top of the tab list. New tabs
+ * still obey the setting.
  */
 import { createServer } from 'node:http';
 import { launchBrowserWithExtension, openSidebar } from './helpers/extension-helper.js';
 import { delay } from './helpers/test-utils.js';
 
-const NAMES = ['t1', 't2', 't3', 'c1', 'c2', 'c3', 'blank', 'popup'];
+const NAMES = ['t1', 't2', 't3', 'c1', 'c2', 'c3', 'd1', 'blank', 'popup'];
 
 describe('Link tab order', () => {
     let server;
@@ -30,7 +32,8 @@ describe('Link tab order', () => {
                     '<button id="popup" onclick="window.open(\'/popup\')">popup</button>'
                 )
                 .join(' ');
-            res.end(`<title>${name}</title>${name === 't2' ? links : name}`);
+            const otherLinks = '<a id="d1" href="/d1">d1</a>';
+            res.end(`<title>${name}</title>${name === 't2' ? links : name === 't3' ? otherLinks : name}`);
         });
         await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
         origin = `http://127.0.0.1:${server.address().port}`;
@@ -117,7 +120,7 @@ describe('Link tab order', () => {
         ['on', true, ['t3', 't2', 'c1', 'c2', 'c3', 't1'], ['t1', 't2', 'c1', 'c2', 'c3', 't3']],
         ['off', false, ['t1', 't2', 'c1', 'c2', 'c3', 't3'], ['t1', 't2', 'c1', 'c2', 'c3', 't3']]
     ])(
-        'links opened with Cmd+click stack below their tab in opening order, setting %s',
+        'three links in a row from one tab stack beneath it in opening order, setting %s',
         async (label, invert, expectedList, expectedChrome) => {
             await start(invert);
             await cmdClick(pages.t2, '#c1');
@@ -129,10 +132,57 @@ describe('Link tab order', () => {
         90000
     );
 
+    // Chrome's own model: coming back to a tab starts its links again directly beneath it.
+    const switchTo = name =>
+        sidebar.evaluate(async name => {
+            const [tab] = await chrome.tabs.query({ url: `*://127.0.0.1/${name}` });
+            await chrome.tabs.update(tab.id, { active: true });
+        }, name);
+
     test.each([
-        ['on', true, ['t3', 't2', 'blank', 'popup', 't1']],
-        ['off', false, ['t1', 't2', 'blank', 'popup', 't3']]
+        ['on', true, ['t3', 't2', 'c3', 'c1', 'c2', 't1']],
+        ['off', false, ['t1', 't2', 'c3', 'c1', 'c2', 't3']]
     ])(
+        'after switching away and back, the next link goes directly below the tab, setting %s',
+        async (label, invert, expected) => {
+            await start(invert);
+            await cmdClick(pages.t2, '#c1');
+            await cmdClick(pages.t2, '#c2');
+            await switchTo('t3');
+            await delay(400);
+            await switchTo('t2');
+            await delay(400);
+            await cmdClick(pages.t2, '#c3');
+            await expectListed(expected);
+        },
+        90000
+    );
+
+    test.each([
+        ['on', true, ['t3', 'd1', 't2', 'c3', 'c1', 'c2', 't1']],
+        ['off', false, ['t1', 't2', 'c3', 'c1', 'c2', 't3', 'd1']]
+    ])(
+        'links from one tab, links from another, then back: the next link is directly below the first tab, setting %s',
+        async (label, invert, expected) => {
+            await start(invert);
+            await cmdClick(pages.t2, '#c1');
+            await cmdClick(pages.t2, '#c2');
+            await switchTo('t3');
+            await cmdClick(pages.t3, '#d1');
+            await switchTo('t2');
+            await delay(400);
+            await cmdClick(pages.t2, '#c3');
+            await expectListed(expected);
+        },
+        90000
+    );
+
+    test.each([
+        ['on', true, ['t3', 't2', 'popup', 'blank', 't1']],
+        ['off', false, ['t1', 't2', 'popup', 'blank', 't3']]
+    ])(
+        // Each click brings the opener to the front first, which is a return to the tab, so the
+        // second link goes directly below it.
         'a target=_blank link and window.open land below their tab, setting %s',
         async (label, invert, expected) => {
             await start(invert);
