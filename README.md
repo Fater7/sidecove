@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="public/assets/icon.png" alt="Sidecove logo" width="96" height="96">
+  <br>
+  <strong>Sidecove</strong>
+</p>
+
 # Sidecove: Arc-style spaces and vertical tabs for Chrome
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
@@ -7,8 +13,6 @@ Sidecove brings Arc-style spaces, pinned tabs and favourites to Chrome's side pa
 Sidecove is an independent project, not affiliated with or endorsed by The Browser Company or the Arc browser.
 
 ![Sidecove sidebar](docs/screenshot-sidebar.png)
-
-![Spaces](docs/screenshot-spaces.png)
 
 ## Features
 
