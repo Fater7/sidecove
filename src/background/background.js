@@ -189,6 +189,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         setupAutoArchiveAlarm();
         sendResponse({ success: true });
         return false; // Synchronous response
+    } else if (message.action === 'workerVersion') {
+        // Lets the update test tell the new worker from an old one Chrome kept running.
+        sendResponse({ version: chrome.runtime.getManifest().version });
+        return false; // Synchronous response
     } else if (message.action === 'openNewTab') {
         chrome.tabs.create({ url: message.url });
         sendResponse({ success: true });

@@ -77,7 +77,11 @@ test('without a sidebar the command activates the target space and its last tab'
         tabs: {
             query: async ({ active }) =>
                 active ? [{ id: 2, windowId: 9 }] : [1, 2, 3, 4, 5].map(id => ({ id, windowId: 9 })),
-            update: async (id, props) => calls.push(['update', id, props])
+            update: async (id, props) => calls.push(['update', id, props]),
+            create: async props => {
+                calls.push(['create', props]);
+                return { id: 50 };
+            }
         },
         storage: { session: { get: async () => ({ activeSpaces: {} }) } }
     };
@@ -98,7 +102,11 @@ test('without a sidebar the command activates the target space and its last tab'
     assert.equal(await switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { slot: 3 } }), 'empty');
     assert.deepEqual(
         calls.filter(c => c[0] !== 'get'),
-        [['activate', 'empty']]
+        [
+            ['activate', 'empty'],
+            ['create', { windowId: 9, active: true }],
+            ['assign', 'empty']
+        ]
     );
 });
 
@@ -113,7 +121,11 @@ test('without a sidebar stepping past an empty space keeps advancing', async () 
     const chromeApi = {
         tabs: {
             query: async ({ active }) => (active ? [{ id: 1, windowId: 9 }] : [1, 2].map(id => ({ id, windowId: 9 }))),
-            update: async (id, props) => calls.push(['update', id, props])
+            update: async (id, props) => calls.push(['update', id, props]),
+            create: async props => {
+                calls.push(['create', props]);
+                return { id: 50 };
+            }
         },
         storage: { session: { get: async () => ({ activeSpaces: { ...activeSpaces } }) } }
     };
@@ -122,12 +134,15 @@ test('without a sidebar stepping past an empty space keeps advancing', async () 
             activeSpaces[message.windowId] = message.spaceId;
             calls.push(['activate', message.spaceId]);
         }
+        if (message.action === 'assign') calls.push(['assign', message.spaceId]);
         return stored;
     };
     assert.equal(await switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { delta: 1 } }), 'empty');
     assert.equal(await switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { delta: 1 } }), 'work');
     assert.deepEqual(calls, [
         ['activate', 'empty'],
+        ['create', { windowId: 9, active: true }],
+        ['assign', 'empty'],
         ['activate', 'work'],
         ['update', 2, { active: true }]
     ]);
@@ -135,4 +150,56 @@ test('without a sidebar stepping past an empty space keeps advancing', async () 
     calls.length = 0;
     activeSpaces[9] = 'deleted';
     assert.equal(await switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { delta: 1 } }), 'empty');
+});
+
+test('without a sidebar an empty space gets one New Tab, not one per quick press, and none in a closing window', async () => {
+    const stored = [
+        { id: 'home', spaceBookmarks: [], temporaryTabs: [1], lastTab: 1 },
+        { id: 'empty', spaceBookmarks: [], temporaryTabs: [] }
+    ];
+    let windowTabs = [{ id: 1, windowId: 9 }];
+    const created = [];
+    let finish;
+    const chromeApi = {
+        tabs: {
+            query: async ({ active }) => (active ? [{ id: 1, windowId: 9 }] : windowTabs),
+            update: async () => {},
+            create: props => {
+                created.push(props);
+                return new Promise(resolve => (finish = () => resolve({ id: 60 })));
+            }
+        },
+        storage: { session: { get: async () => ({ activeSpaces: { 9: 'home' } }) } }
+    };
+    const dispatch = async () => stored;
+    const first = switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { slot: 2 } });
+    await new Promise(resolve => setImmediate(resolve));
+    const second = switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { slot: 2 } });
+    await new Promise(resolve => setImmediate(resolve));
+    finish();
+    await Promise.all([first, second]);
+    assert.equal(created.length, 1);
+
+    windowTabs = [];
+    await switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { slot: 2 } });
+    assert.equal(created.length, 1);
+});
+
+test('without a sidebar a New Tab that cannot be opened still leaves the space switched', async () => {
+    const stored = [
+        { id: 'home', spaceBookmarks: [], temporaryTabs: [1], lastTab: 1 },
+        { id: 'gone', spaceBookmarks: [], temporaryTabs: [] }
+    ];
+    const chromeApi = {
+        tabs: {
+            query: async ({ active }) => (active ? [{ id: 1, windowId: 9 }] : [{ id: 1, windowId: 9 }]),
+            update: async () => {},
+            create: async () => {
+                throw new Error('No window with id: 9');
+            }
+        },
+        storage: { session: { get: async () => ({ activeSpaces: { 9: 'home' } }) } }
+    };
+    const dispatch = async () => stored;
+    assert.equal(await switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId: 9, request: { slot: 2 } }), 'gone');
 });

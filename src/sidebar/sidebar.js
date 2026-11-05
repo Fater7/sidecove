@@ -32,6 +32,7 @@ import { SpacePatchQueue } from './space-patch-queue.js';
 import { RefreshCoordinator } from './refresh-coordinator.js';
 import { EditSessionRegistry } from './edit-sessions.js';
 import { wireNewTabRow } from './features/new-tab/new-tab-row.js';
+import { createSpaceTabShower } from './features/space-switch/show-space-tab.js';
 import { isProtectedFavorite } from '../shared/favorite-safety.js';
 import {
     selectWindowSpaceTabs,
@@ -135,7 +136,7 @@ async function switchSpaceBy(delta) {
 // A request is { delta } to step through spaces or { slot } for a numbered shortcut.
 async function applySpaceRequest(request) {
     const targetId = resolveSpaceTarget(spaces, activeSpaceId, request);
-    if (targetId) await setActiveSpace(targetId);
+    if (targetId) await setActiveSpace(targetId, true, { openIfEmpty: true });
 }
 
 // Shortcuts from chrome://extensions/shortcuts reach the sidebar of the focused window.
@@ -410,6 +411,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tab.pinned || changeInfo.pinned !== undefined) updatePinnedFavicons(); // Update favicons when a tab is pinned/unpinned
     });
     chrome.tabs.onRemoved.addListener(handleTabRemove);
+    chrome.tabs.onRemoved.addListener((_tabId, removeInfo) => spaceTabShower.noteTabRemoved(removeInfo));
     const refreshWindowTabs = async (_tabId, info) => {
         if (info.newWindowId === currentWindow?.id || info.oldWindowId === currentWindow?.id) {
             await updatePinnedFavicons();
@@ -1186,7 +1188,7 @@ async function updateSpaceSwitcher() {
             if (button.classList.contains('dragging-switcher')) return;
 
             Logger.log('clicked for active', space);
-            await setActiveSpace(space.id);
+            await setActiveSpace(space.id, true, { openIfEmpty: true });
         });
         button.addEventListener('contextmenu', event => {
             event.preventDefault();
@@ -1576,7 +1578,7 @@ function clearFolderOpenTimer() {
     currentHoveredFolder = null;
 }
 
-async function setActiveSpace(spaceId, updateTab = true, { initial = false } = {}) {
+async function setActiveSpace(spaceId, updateTab = true, { initial = false, openIfEmpty = false } = {}) {
     const space = spaces.find(s => s.id === spaceId);
     if (!space) return;
     if (activeSpaceId && activeSpaceId !== spaceId) {
@@ -1593,12 +1595,7 @@ async function setActiveSpace(spaceId, updateTab = true, { initial = false } = {
     await activateSpaceInDOM(spaceId, spaces, updateSpaceSwitcher);
     await refreshActiveSpaceUI();
     if (updateTab && activeSpaceId === spaceId) {
-        const tabs = (await getOwnedTabs(spaceId)).filter(t => t.windowId === currentWindow.id);
-        const tab = tabs.find(t => t.id === space.lastTab) || tabs[tabs.length - 1];
-        if (tab && activeSpaceId === spaceId) {
-            await chrome.tabs.update(tab.id, { active: true });
-            activateTabInDOM(tab.id);
-        }
+        await spaceTabShower.show(space, { openIfEmpty });
     }
 }
 
@@ -4283,6 +4280,18 @@ function handleTabUpdate(tabId, changeInfo, tab) {
         }
     });
 }
+
+// After a space switch, show the space's last tab, or a New Tab when it has none open.
+const spaceTabShower = createSpaceTabShower({
+    getOwnedTabs,
+    getActiveSpaceId: () => activeSpaceId,
+    windowId: () => currentWindow?.id,
+    activateTab: async tabId => {
+        await chrome.tabs.update(tabId, { active: true });
+        activateTabInDOM(tabId);
+    },
+    openNewTab: () => createNewTab()
+});
 
 // Chrome picks the next tab itself when the active one closes; keep the space you are in.
 const closeFocus = createCloseFocus({
