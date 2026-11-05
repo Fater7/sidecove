@@ -1,5 +1,6 @@
 import { isPracticeUrl } from './tour-practice.js';
 import { syncSpaceGroups } from './tab-group-sync.js';
+import { placeLinkTab } from './link-tab-placement.js';
 import { LocalStorage } from './localstorage.js';
 
 import { sections, ownerOf, updateNativePinSection, spaceForActivation } from './space-membership.js';
@@ -107,10 +108,17 @@ export class SpaceStore {
         this.restoredRanks = new Map(session.restoredTabRanks || []);
         this.active = session.activeSpaces || {};
         this.lastActive = session.lastActiveSpace || null;
-        const settings = await chrome.storage.sync.get(['defaultSpaceName', 'perSpacePinnedFavorites']);
+        const settings = await chrome.storage.sync.get([
+            'defaultSpaceName',
+            'perSpacePinnedFavorites',
+            'invertTabOrder'
+        ]);
         this.defaultSpaceName = settings.defaultSpaceName || 'Home';
         this.perSpacePinnedFavorites = settings.perSpacePinnedFavorites === true;
+        this.invertTabOrder = settings.invertTabOrder !== false;
         const live = await chrome.tabs.query({});
+        // Kept in memory only; read back from Chrome so a restarted worker still knows who opened what.
+        this.openers = new Map(live.filter(t => t.openerTabId !== undefined).map(t => [t.id, t.openerTabId]));
         if (data.spaceModelVersion !== 2) {
             const idMap = new Map();
             const migrated = [];
@@ -248,11 +256,12 @@ export class SpaceStore {
             space[key].sort(
                 (a, b) => (this.restoredRanks.get(a) ?? Infinity) - (this.restoredRanks.get(b) ?? Infinity)
             );
-        } else {
-            const openerIndex = space[key].indexOf(tab.openerTabId);
-            if (openerIndex >= 0) space[key].splice(openerIndex + 1, 0, tab.id);
-            else space[key].push(tab.id);
-        }
+        } else if (key === 'temporaryTabs' && tab.openerTabId !== undefined && !(url && isNewTabPage)) {
+            // A link opened from a tab goes below it, whichever way the list is drawn. Chrome reports
+            // no address yet for some link tabs, so only a named new-tab page is left out.
+            this.openers.set(tab.id, tab.openerTabId);
+            space[key] = placeLinkTab(space[key], tab.openerTabId, tab.id, this.openers, this.invertTabOrder);
+        } else space[key].push(tab.id);
     }
     async persist() {
         const tabs = new Map((await chrome.tabs.query({})).map(t => [t.id, t]));
@@ -419,6 +428,7 @@ export class SpaceStore {
                 this.snapshotByTab.delete(id);
                 this.provisional.delete(id);
                 this.hidden.delete(id);
+                this.openers.delete(id);
                 for (const space of this.spaces) {
                     for (const key of sections) space[key] = space[key].filter(t => t !== id);
                     if (space.lastTab === id) delete space.lastTab;
@@ -461,6 +471,10 @@ export class SpaceStore {
             if (area === 'sync' && changes.perSpacePinnedFavorites)
                 handle(() => {
                     this.perSpacePinnedFavorites = changes.perSpacePinnedFavorites.newValue === true;
+                });
+            if (area === 'sync' && changes.invertTabOrder)
+                handle(() => {
+                    this.invertTabOrder = changes.invertTabOrder.newValue !== false;
                 });
             if (area === 'sync' && changes.defaultSpaceName)
                 handle(() => {
