@@ -182,6 +182,46 @@ describe('closing a tab keeps the space you are in', () => {
         expect((await spaceByName('Zeta')).temporaryTabs).toEqual(expect.arrayContaining(tabsInB));
     });
 
+    // Chrome's "Switch to this tab" (address bar) shows the chosen tab and then closes the New Tab
+    // the user was on. That is not a close to stay in the space for; the chosen tab stays shown.
+    test('"Switch to this tab" from an empty New Tab keeps the tab that was chosen', async () => {
+        const { tabsInA } = await setUp('Lambda', 'Mu', ['store', 'one', 'two']);
+        const newTab = await page.evaluate(async () => (await chrome.tabs.create({ active: true })).id);
+        await page.waitForFunction(
+            async id => /^chrome:\/\/(newtab|new-tab-page)\/?$/.test((await chrome.tabs.get(id)).url),
+            { polling: 100 },
+            newTab
+        );
+        await sleep(500);
+        // The tab below the New Tab is the one a close would show next.
+        expect((await displayedTabs()).slice(0, 2)).toEqual([newTab, tabsInA[2]]);
+
+        // Not awaited between the two calls, the order Chrome uses.
+        await page.evaluate(
+            (chosen, empty) => {
+                chrome.tabs.update(chosen, { active: true });
+                chrome.tabs.remove(empty);
+            },
+            tabsInA[0],
+            newTab
+        );
+        await sleep(1500);
+
+        expect(await activeTabId()).toBe(tabsInA[0]);
+        expect(await urlOf(tabsInA[0])).toContain('Lambda-store');
+        expect(await activeSpaceName()).toBe('Lambda');
+        expect(
+            await page.evaluate(
+                id =>
+                    chrome.tabs.get(id).then(
+                        () => true,
+                        () => false
+                    ),
+                newTab
+            )
+        ).toBe(false);
+    });
+
     test('opening a tab of another space on purpose still switches to that space', async () => {
         const { tabsInB } = await setUp('Eta', 'Theta', ['one', 'two']);
         await activateTab(tabsInB[0]);

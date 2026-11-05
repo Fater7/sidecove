@@ -174,3 +174,26 @@ test('tabs closed together are handled one after another and each lands on an op
         ]
     );
 });
+
+// "Switch to this tab" from a New Tab: Chrome shows the chosen tab, then closes the New Tab.
+test('an empty New Tab that closes leaves the tab Chrome picked alone', async () => {
+    const { focus, calls, active } = setUp({ open: [1, 3, 10], activeTab: 2 });
+    focus.trackTab({ id: 2, url: '', pendingUrl: 'chrome://newtab/' });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 1, activatedSpaceId: 'A' }), false);
+    assert.deepEqual(calls, []);
+    assert.equal(active(), 1);
+});
+
+test('a tab that was a New Tab and has been navigated away still keeps the space on close', async () => {
+    const { focus, calls } = setUp({ open: [1, 3, 10], activeTab: 2 });
+    focus.trackTab({ id: 2, url: 'chrome://newtab/' });
+    focus.trackTab({ id: 2, url: 'http://example.com/' });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 1, activatedSpaceId: 'A' }), true);
+    assert.deepEqual(calls, [['activate', 3]]);
+});
+
+test('a New Tab with a page loading in it is an ordinary tab', async () => {
+    const { focus } = setUp({ open: [1, 3, 10], activeTab: 2 });
+    focus.trackTab({ id: 2, url: '', pendingUrl: 'http://example.com/' });
+    assert.equal(await focus.stayAfterClose({ activatedTabId: 1, activatedSpaceId: 'A' }), true);
+});

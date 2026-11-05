@@ -1,8 +1,10 @@
 // After the active tab closes, Chrome shows another tab by its own rule, which can be a tab
 // of a different space, or a different tab of this one than the list shows next. As in Arc, a
 // close keeps you in your space: show the next tab down its list, or the one above when the
-// closed tab was last, or a New Tab when none is left.
+// closed tab was last, or a New Tab when none is left. An empty New Tab that closes is left
+// to Chrome: that is how "Switch to this tab" ends, and Chrome's pick is the tab chosen.
 import { Logger } from '../../../shared/logger.js';
+import { isUntouchedPage } from '../../../shared/new-tab-page.js';
 
 // `order` is the space's tabs as displayed, top to bottom, including the closed one.
 export function pickTabAfterClose(order, closedId, isOpen) {
@@ -33,6 +35,9 @@ export function createCloseFocus({
     const closed = new Map();
     // The tab the user last visited in each space; the service worker's record can be overwritten.
     const visited = new Map();
+    // Tabs showing nothing but the new tab page. Their address is gone once they close, and
+    // "Switch to this tab" shows the chosen tab before the New Tab closes, so it is known early.
+    const emptyNewTabs = new Set();
     // Closing several tabs fires several activations; handle them one at a time.
     let queue = Promise.resolve();
 
@@ -40,6 +45,12 @@ export function createCloseFocus({
         const spaceId = getActiveSpaceId();
         const previousTabId = getActiveTabId();
         if (previousTabId == null || !spaceId) return false;
+        if (emptyNewTabs.has(previousTabId)) {
+            // Settled here, so also forget the New Tabs that have closed since.
+            const open = new Set(await openTabIds());
+            for (const id of emptyNewTabs) if (!open.has(id)) emptyNewTabs.delete(id);
+            return false;
+        }
         const note = closed.get(previousTabId);
         if ((note ? note.spaceId : ownerOf(previousTabId)) !== spaceId) return false;
         // A tab that is still open, such as one moved to another window, was not closed.
@@ -64,6 +75,12 @@ export function createCloseFocus({
     }
 
     return {
+        // Call for each tab on creation and update, and for the tabs open at start.
+        trackTab(tab) {
+            if (isUntouchedPage(tab)) emptyNewTabs.add(tab.id);
+            else emptyNewTabs.delete(tab.id);
+        },
+
         noteRemoval(tabId) {
             // Only the tab being shown can make Chrome pick another one.
             if (tabId !== getActiveTabId()) return;
