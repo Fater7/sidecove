@@ -500,3 +500,43 @@ test('links opened from shared native pins use the selected space, while per-spa
     });
     assert.equal(ownerOf(local.spaces, 4).id, 'a');
 });
+
+test('a hidden tab belongs to no space, stays out when it navigates or the worker restarts, and returns in order', async () => {
+    tabs.push({ id: 3, windowId: 1, url: 'https://three.test/' }, { id: 4, windowId: 1, url: 'https://four.test/' });
+    local.spaces[0].temporaryTabs = [1, 3, 4];
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    await store.dispatch({ action: 'hide', tabIds: [3, 4] });
+    assert.deepEqual(local.spaces[0].temporaryTabs, [1]);
+    assert.deepEqual(session.hiddenTabs, [3, 4]);
+
+    // Navigating, or a worker that starts again and meets the open tabs, does not adopt them.
+    await store.run(() => store.track({ ...tabs[2], url: 'https://moved.test/' }));
+    assert.deepEqual(store.spaces[0].temporaryTabs, [1]);
+    const restarted = new SpaceStore();
+    await restarted.dispatch({ action: 'get' });
+    assert.deepEqual(local.spaces[0].temporaryTabs, [1]);
+    assert.deepEqual(local.spaces[1].temporaryTabs, [2]);
+
+    // A tab opened meanwhile stays where it joined; the hidden ones go back to their places.
+    tabs.push({ id: 5, windowId: 1, url: 'https://five.test/' });
+    await restarted.run(() => restarted.track(tabs[4]));
+    assert.deepEqual(restarted.spaces[0].temporaryTabs, [1, 5]);
+    await restarted.dispatch({ action: 'unhide', tabIds: [3, 4], spaceId: 'a', order: [1, 3, 4] });
+    assert.deepEqual(local.spaces[0].temporaryTabs, [1, 3, 4, 5]);
+    assert.deepEqual(session.hiddenTabs, []);
+});
+
+test('a hidden tab that Chrome closes is forgotten, and unhiding into a deleted space adopts the tab', async () => {
+    tabs.push({ id: 3, windowId: 1, url: 'https://three.test/' }, { id: 4, windowId: 1, url: 'https://four.test/' });
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    await store.dispatch({ action: 'hide', tabIds: [3, 4] });
+    tabs = tabs.filter(t => t.id !== 3);
+    store.install();
+    chrome.tabs.onRemoved.emit(3, {});
+    await store.run(() => {});
+    assert.deepEqual(session.hiddenTabs, [4]);
+    await store.dispatch({ action: 'unhide', tabIds: [4], spaceId: 'gone', order: [] });
+    assert.ok(ownerOf(store.spaces, 4), 'the tab is back in some space');
+});
