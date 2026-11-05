@@ -1074,11 +1074,22 @@ h3 {
     text-overflow: ellipsis;
 }
 
-/* As in Arc: a row of icons, or a dot for a space without one, spread across the bar. The
-   active space is full strength and the name shows on hover. */
+/* As in Arc: a row of icons, or a dot for a space without one, side by side and centred in
+   the bar. The active space is full strength and the name shows on hover. */
 .space-switcher.icons-only {
     gap: 2px;
-    justify-content: space-between;
+    /* "safe" keeps the first dot reachable: once the dots overflow, the row starts at the left. */
+    justify-content: safe center;
+}
+
+/* The bar has 48px of padding on the right for the add-space button and 8px on the left. This
+   spacer evens that out so the dots sit in the middle of the whole bar. It is the first thing
+   to shrink, so a full bar scrolls from the left edge as before. Its negative margin cancels
+   the gap after it, so a collapsed spacer takes no room at all. */
+.space-switcher.icons-only::before {
+    content: '';
+    flex: 0 1 48px;
+    margin-right: -2px;
 }
 
 .space-switcher.icons-only button {
