@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { archiveAndCloseTabs, reopenClosedTabs } from '../../../src/sidebar/clean-all.js';
+import { archiveAndCloseTabs, reopenClosedTabs } from '../../../../../src/sidebar/features/clean-all/clean-all.js';
 
 function fakes() {
     const calls = [];

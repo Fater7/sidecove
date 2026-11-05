@@ -42,7 +42,7 @@ import {
 } from './sidebar-tabs.js';
 import { ownerOf } from '../shared/space-store.js';
 import { canCreateFolder, canMoveFolder, createFolder } from './folder-policy.js';
-import { archiveAndCloseTabs, reopenClosedTabs } from './clean-all.js';
+import { archiveAndCloseTabs, reopenClosedTabs } from './features/clean-all/clean-all.js';
 import { loadFolderCollapsed, saveFolderCollapsed } from './folder-state.js';
 import {
     FOLDER_CLOSED_ICON,
