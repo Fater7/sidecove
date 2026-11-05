@@ -153,6 +153,10 @@ test.each(cases)('a profile from %s keeps its spaces, favorites and settings aft
     try {
         page = await openSidebar(browser, extensionId);
         expect(await page.evaluate(() => chrome.runtime.getManifest().version)).toBe(updatedVersion);
+        // Chrome can keep running the old worker; only the new one answers this.
+        expect(await page.evaluate(() => chrome.runtime.sendMessage({ action: 'workerVersion' }))).toEqual({
+            version: updatedVersion
+        });
         expect(await snapshot(page)).toEqual(before);
         const chips = await page.$$eval('#spaceSwitcher button[data-space-id]', buttons =>
             buttons.map(button => button.textContent.trim())

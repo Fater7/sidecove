@@ -5,6 +5,9 @@
  * tests share one definition of which space a shortcut means.
  */
 
+import { Logger } from './logger.js';
+import { chooseTabForSpace, createNewTabOpener } from './space-tab-choice.js';
+
 export const SPACE_SHORTCUT_SLOTS = 9;
 
 // Manifest command names. They have no default keys: Chrome allows only four suggested
@@ -59,10 +62,13 @@ export function scrollLeftToReveal({ scrollLeft, viewWidth, itemLeft, itemWidth,
     return scrollLeft;
 }
 
+// Spaces still getting their New Tab, so a quick second shortcut does not open another.
+const newTabOpener = createNewTabOpener();
+
 /**
  * Switch the space of a window when its sidebar is closed. The panel normally handles the
  * command itself; this keeps the shortcut useful without it by activating the target
- * space's last tab, or only recording the space for new tabs when it has none.
+ * space's last tab, or opening a New Tab in the space when it has none, as the panel does.
  */
 export async function switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId, request }) {
     const spaces = await dispatch({ action: 'get' });
@@ -76,11 +82,31 @@ export async function switchSpaceWithoutSidebar({ chromeApi, dispatch, windowId,
     if (!targetId) return null;
     const target = spaces.find(space => space.id === targetId);
     await dispatch({ action: 'activate', windowId, spaceId: targetId });
-    const windowTabs = new Set(
-        (await chromeApi.tabs.query({ windowId })).filter(tab => !tab.pinned).map(tab => tab.id)
-    );
-    const owned = [...target.spaceBookmarks, ...target.temporaryTabs].filter(id => windowTabs.has(id));
-    const tabId = owned.includes(target.lastTab) ? target.lastTab : owned[owned.length - 1];
-    if (tabId) await chromeApi.tabs.update(tabId, { active: true });
+    const allWindowTabs = await chromeApi.tabs.query({ windowId });
+    const windowTabs = new Map(allWindowTabs.filter(tab => !tab.pinned).map(tab => [tab.id, tab]));
+    const ownedTabs = [...target.spaceBookmarks, ...target.temporaryTabs]
+        .filter(id => windowTabs.has(id))
+        .map(id => windowTabs.get(id));
+    const key = `${windowId}:${targetId}`;
+    const choice = chooseTabForSpace({
+        ownedTabs,
+        lastTabId: target.lastTab,
+        newTabPending: newTabOpener.isPending(key),
+        // A window whose tabs are all gone is closing.
+        windowClosing: allWindowTabs.length === 0
+    });
+    if (choice.action === 'show') {
+        await chromeApi.tabs.update(choice.tabId, { active: true });
+    } else if (choice.action === 'open') {
+        try {
+            await newTabOpener.open(key, async () => {
+                const tab = await chromeApi.tabs.create({ windowId, active: true });
+                await dispatch({ action: 'assign', tabId: tab.id, spaceId: targetId });
+            });
+        } catch (error) {
+            // The window may have closed meanwhile; the space is switched either way.
+            Logger.warn('Could not open a New Tab in the space:', error);
+        }
+    }
     return targetId;
 }
