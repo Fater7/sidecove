@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **README picture in light mode.** The first picture in the README now shows Sidecove in light mode, so the two pictures show both looks. You will not notice this in the extension itself.
-- **README spaces picture in light and dark.** The second picture in the README now shows the same space in light mode and in dark mode, side by side. You will not notice this in the extension itself.
+- **README spaces picture in light and dark.** The second picture in the README now shows two spaces side by side, one in light mode and one in dark mode, on a soft blue-grey background. You will not notice this in the extension itself.
 
 ## 1.3.0
 
