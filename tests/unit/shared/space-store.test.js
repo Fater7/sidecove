@@ -157,7 +157,7 @@ test('links opened from one tab stack below it in opening order, whichever way t
         tabs.length = 2;
     }
 });
-test('links keep their opening order after the service worker restarts', async () => {
+test('links keep their order after the service worker restarts', async () => {
     const open = async (store, id) => {
         const child = { id, windowId: 1, openerTabId: 2, url: `https://child${id}.test/` };
         tabs.push(child);
@@ -169,11 +169,76 @@ test('links keep their opening order after the service worker restarts', async (
     sync.invertTabOrder = false;
     local.spaces[1].temporaryTabs = [2];
     await open(new SpaceStore(), 4);
-    // A new worker has no memory of the first link, but Chrome still reports its opener.
+    // A new worker reads back where the last link from tab 2 went.
     const restarted = new SpaceStore();
     await restarted.dispatch({ action: 'get' });
     await open(restarted, 5);
     assert.deepEqual(local.spaces[1].temporaryTabs, [2, 4, 5]);
+});
+test('a link opened from a link stays inside the group of the first tab', async () => {
+    sync.invertTabOrder = false;
+    local.spaces[1].temporaryTabs = [2];
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    const open = async (id, openerTabId) => {
+        const child = { id, windowId: 1, openerTabId, url: `https://child${id}.test/` };
+        tabs.push(child);
+        await store.run(async () => {
+            store.track(child);
+            await store.persist();
+        });
+    };
+    await open(4, 2);
+    await open(5, 4);
+    await open(6, 2);
+    assert.deepEqual(local.spaces[1].temporaryTabs, [2, 4, 5, 6]);
+});
+test('closing the last link makes the link above it the place the next one follows', async () => {
+    sync.invertTabOrder = false;
+    local.spaces[1].temporaryTabs = [2];
+    const store = new SpaceStore();
+    store.install();
+    await store.dispatch({ action: 'get' });
+    const open = async id => {
+        const child = { id, windowId: 1, openerTabId: 2, url: `https://child${id}.test/` };
+        tabs.push(child);
+        await store.run(async () => {
+            store.track(child);
+            await store.persist();
+        });
+    };
+    await open(4);
+    await open(5);
+    tabs.splice(
+        tabs.findIndex(t => t.id === 5),
+        1
+    );
+    chrome.tabs.onRemoved.emit(5, {});
+    await store.run(() => {});
+    await open(6);
+    assert.deepEqual(local.spaces[1].temporaryTabs, [2, 4, 6]);
+});
+test('switching to the opener again makes its next link go directly beneath it', async () => {
+    sync.invertTabOrder = false;
+    local.spaces[1].temporaryTabs = [2];
+    const store = new SpaceStore();
+    store.install();
+    await store.dispatch({ action: 'get' });
+    const open = async id => {
+        const child = { id, windowId: 1, openerTabId: 2, url: `https://child${id}.test/` };
+        tabs.push(child);
+        await store.run(async () => {
+            store.track(child);
+            await store.persist();
+        });
+    };
+    await open(4);
+    await open(5);
+    // The user goes to another tab and comes back to tab 2.
+    chrome.tabs.onActivated.emit({ tabId: 2, windowId: 1 });
+    await store.run(() => {});
+    await open(6);
+    assert.deepEqual(local.spaces[1].temporaryTabs, [2, 6, 4, 5]);
 });
 test('the Show new tabs at the top setting is picked up without a restart', async () => {
     const store = new SpaceStore();
