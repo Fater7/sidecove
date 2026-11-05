@@ -29,7 +29,8 @@ function fakes({ activeTabId = 99, openIds = [1, 2, 3, 98, 99], displayOrder = [
             openNewTab: async () => calls.push(['new tab']),
             startPendingClean: async payload => {
                 calls.push(['hide', payload]);
-                return { batchId: 'batch-1', spaces: [] };
+                if (startError) throw startError;
+                return { batchId: 'batch-1', closeAt: 8500, spaces: [] };
             },
             undoPendingClean: async batchId => {
                 calls.push(['undo', batchId]);
@@ -48,6 +49,7 @@ function fakes({ activeTabId = 99, openIds = [1, 2, 3, 98, 99], displayOrder = [
     };
 }
 let restored = [];
+let startError = null;
 
 const tabs = [
     { id: 1, url: 'https://a.example/', title: 'A' },
@@ -65,6 +67,7 @@ test('Clean All archives every tab, then hides them together without closing any
         ['hide', { spaceId: 'home', tabIds: [1, 2, 3], order: [98, 1, 2, 3] }]
     ]);
     assert.equal(result.batchId, 'batch-1');
+    assert.equal(result.closeAt, 8500);
     assert.deepEqual(
         result.records.map(r => [r.tabId, r.addedToArchive]),
         [
@@ -72,6 +75,20 @@ test('Clean All archives every tab, then hides them together without closing any
             [2, true],
             [3, true]
         ]
+    );
+});
+
+test('when the tabs cannot be hidden, the archive entries Clean All added are taken back', async () => {
+    const { calls, api } = fakes();
+    startError = new Error('worker unavailable');
+    try {
+        await assert.rejects(clearTabs(tabs, 'home', [1, 2, 3], api), /worker unavailable/);
+    } finally {
+        startError = null;
+    }
+    assert.deepEqual(
+        calls.filter(call => call[0] === 'unarchive').map(call => call[1]),
+        tabs.map(tab => tab.url)
     );
 });
 

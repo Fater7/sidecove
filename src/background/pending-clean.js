@@ -46,15 +46,16 @@ export function registerPendingClean({
         );
     }
 
-    async function showAgain(batch, ids) {
-        const spaces = await spaceStore.dispatch({
-            action: 'unhide',
-            tabIds: ids,
-            spaceId: batch.spaceId,
-            order: batch.order
-        });
-        return spaces;
-    }
+    const showAgain = (batch, ids) =>
+        spaceStore.dispatch({ action: 'unhide', tabIds: ids, spaceId: batch.spaceId, order: batch.order });
+
+    // Sound goes back to what each tab had before Clean All muted it.
+    const restoreSound = (tabs, errorText) =>
+        Promise.all(
+            tabs.map(tab =>
+                chromeApi.tabs.update(tab.tabId, { muted: tab.muted }).catch(error => Logger.warn(errorText, error))
+            )
+        );
 
     // The Undo window is over: close what is still open. Closing a tab drops it from the
     // hidden set, and one Chrome already closed needs nothing.
@@ -70,13 +71,20 @@ export function registerPendingClean({
             // Chrome refused (a tab is being dragged, say). A tab that cannot be closed comes
             // back to the list rather than staying hidden.
             Logger.warn('[Clean All] Could not close the hidden tabs; showing them again:', error);
-            const left = await openIds(ids);
-            if (left.length) await showAgain(batch, left);
+            const left = new Set(await openIds(ids));
+            if (left.size) {
+                await showAgain(batch, [...left]);
+                await restoreSound(
+                    batch.tabs.filter(tab => left.has(tab.tabId)),
+                    '[Clean All] Could not restore the sound of a tab:'
+                );
+            }
         }
     }
 
     async function start({ spaceId, tabIds, order }) {
-        const live = (await chromeApi.tabs.query({})).filter(tab => tabIds.includes(tab.id));
+        const wanted = new Set(tabIds);
+        const live = (await chromeApi.tabs.query({})).filter(tab => wanted.has(tab.id));
         const batch = {
             id: `${now()}-${++counter}`,
             spaceId,
@@ -87,7 +95,14 @@ export function registerPendingClean({
         // Saved before anything changes, so a worker that stops midway still finds the record.
         batches.set(batch.id, batch);
         await save();
-        const spaces = await spaceStore.dispatch({ action: 'hide', tabIds: batch.tabs.map(tab => tab.tabId) });
+        let spaces;
+        try {
+            spaces = await spaceStore.dispatch({ action: 'hide', tabIds: batch.tabs.map(tab => tab.tabId) });
+        } catch (error) {
+            // Nothing was hidden, so there is nothing to close later.
+            await forget(batch);
+            throw error;
+        }
         await Promise.all(
             batch.tabs.map(tab =>
                 chromeApi.tabs
@@ -96,7 +111,7 @@ export function registerPendingClean({
             )
         );
         schedule(batch);
-        return { batchId: batch.id, spaces };
+        return { batchId: batch.id, closeAt: batch.closeAt, spaces };
     }
 
     async function undo({ batchId }) {
@@ -110,14 +125,8 @@ export function registerPendingClean({
             batch,
             back.map(tab => tab.tabId)
         );
-        // Sound returns as it was: a tab the user had muted stays muted.
-        await Promise.all(
-            back.map(tab =>
-                chromeApi.tabs
-                    .update(tab.tabId, { muted: tab.muted })
-                    .catch(error => Logger.warn('[Clean All] Could not restore the sound of a tab:', error))
-            )
-        );
+        // A tab the user had muted stays muted.
+        await restoreSound(back, '[Clean All] Could not restore the sound of a tab:');
         return { restored: back.map(tab => tab.tabId), spaces };
     }
 

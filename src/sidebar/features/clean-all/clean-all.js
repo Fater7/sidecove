@@ -38,8 +38,20 @@ export async function clearTabs(tabs, spaceId, spaceOrder, api) {
     const records = await archiveTabs(tabs, spaceId, api);
     const clearedIds = new Set(tabs.map(tab => tab.id));
     await stepOffClearedTabs(clearedIds, api);
-    const { batchId, spaces } = await api.startPendingClean({ spaceId, tabIds: [...clearedIds], order: spaceOrder });
-    return { records, batchId, spaces };
+    try {
+        const { batchId, closeAt, spaces } = await api.startPendingClean({
+            spaceId,
+            tabIds: [...clearedIds],
+            order: spaceOrder
+        });
+        return { records, batchId, closeAt, spaces };
+    } catch (error) {
+        // The tabs stay as they were, so they must not also be listed as archived.
+        for (const record of records) {
+            if (record.addedToArchive) await api.removeArchivedTab(record.url, record.spaceId);
+        }
+        throw error;
+    }
 }
 
 // Undo shows the hidden tabs again. A tab that is gone by then (Chrome closed it, or the

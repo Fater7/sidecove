@@ -334,14 +334,19 @@ export class SpaceStore {
                     break;
                 case 'hide':
                     for (const id of message.tabIds) {
-                        for (const space of this.spaces)
+                        for (const space of this.spaces) {
                             for (const key of sections) space[key] = space[key].filter(t => t !== id);
+                            // A hidden tab must not be what the space reopens on.
+                            if (space.lastTab === id) delete space.lastTab;
+                        }
                         this.hidden.add(id);
                     }
                     break;
                 case 'unhide': {
                     for (const id of message.tabIds) this.hidden.delete(id);
                     const target = this.spaces.find(s => s.id === message.spaceId);
+                    // Nothing to show again: leave the list in the order it is in now.
+                    if (!message.tabIds.length) break;
                     if (target) {
                         for (const space of this.spaces)
                             for (const key of sections)

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { registerPendingClean, PENDING_CLEAN_KEY } from '../../../src/background/pending-clean.js';
 import { PENDING_CLEAN_MESSAGE, UNDO_WINDOW_MS, CLOSE_GRACE_MS } from '../../../src/shared/pending-clean.js';
 
-let tabs, session, dispatched, clock, timers, listener, removeError;
+let tabs, session, dispatched, clock, timers, listener, removeError, hideError;
 const DUE = UNDO_WINDOW_MS + CLOSE_GRACE_MS;
 
 const chromeApi = () => ({
@@ -29,6 +29,7 @@ const chromeApi = () => ({
 });
 const spaceStore = () => ({
     dispatch: async message => {
+        if (hideError && message.action === 'hide') throw hideError;
         dispatched.push(structuredClone(message));
         return [];
     }
@@ -76,6 +77,7 @@ beforeEach(() => {
     clock = 1_000_000;
     timers = [];
     removeError = undefined;
+    hideError = undefined;
 });
 
 test('Clean All hides the tabs, mutes them, and keeps them open', async () => {
@@ -198,6 +200,25 @@ test('a tab that cannot be closed comes back to the list instead of staying hidd
     await advance(DUE);
     assert.deepEqual(dispatched.at(-1), { action: 'unhide', tabIds: [1, 2], spaceId: 'home', order: [1, 2, 3, 4] });
     assert.equal(tabs.length, 4);
+    // Their sound is back too: they are not left muted by Clean All.
+    assert.deepEqual(
+        tabs.map(t => t.mutedInfo.muted),
+        [false, false, false, false]
+    );
+});
+
+test('Clean All reports when the tabs will close, and a failed hide leaves nothing pending', async () => {
+    await start();
+    const { closeAt } = await clear([1]);
+    assert.equal(closeAt, clock + DUE);
+
+    hideError = new Error('storage is full');
+    const reply = await send({ action: 'start', spaceId: 'home', tabIds: [2], order: [1, 2] });
+    assert.equal(reply.success, false);
+    assert.deepEqual(
+        session[PENDING_CLEAN_KEY].map(batch => batch.tabs.map(tab => tab.tabId)),
+        [[1]]
+    );
 });
 
 test('messages for other features are left alone', async () => {

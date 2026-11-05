@@ -171,6 +171,9 @@ describe('Clean All with Undo', () => {
         await waitForRows(sidebar, 0);
         expect(await openIds(sidebar)).toEqual(expect.arrayContaining([a, b]));
         expect(await muted(sidebar, [a, b])).toEqual([true, true]);
+        // Tab search does not offer them either.
+        const found = await sidebar.evaluate(() => chrome.runtime.sendMessage({ action: 'searchTabs', query: '' }));
+        expect(found.tabs.map(t => t.id)).not.toEqual(expect.arrayContaining([a]));
         // No button shows them again, only Undo.
         expect(await sidebar.$$('.space.active .tab[data-tab-id]')).toHaveLength(0);
 

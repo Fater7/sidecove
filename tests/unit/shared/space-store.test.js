@@ -540,3 +540,18 @@ test('a hidden tab that Chrome closes is forgotten, and unhiding into a deleted 
     await store.dispatch({ action: 'unhide', tabIds: [4], spaceId: 'gone', order: [] });
     assert.ok(ownerOf(store.spaces, 4), 'the tab is back in some space');
 });
+
+test("hiding a tab forgets it as the space's last tab, and unhiding nothing leaves the order alone", async () => {
+    tabs.push({ id: 3, windowId: 1, url: 'https://three.test/' }, { id: 5, windowId: 1, url: 'https://five.test/' });
+    local.spaces[0].temporaryTabs = [3, 1, 5];
+    local.spaces[0].lastTab = 3;
+    const store = new SpaceStore();
+    await store.dispatch({ action: 'get' });
+    await store.dispatch({ action: 'hide', tabIds: [3] });
+    assert.equal(store.spaces[0].lastTab, undefined);
+
+    // The user moved on while the tab was hidden; nothing came back, so nothing is reordered.
+    store.spaces[0].temporaryTabs = [5, 1];
+    await store.dispatch({ action: 'unhide', tabIds: [], spaceId: 'a', order: [1, 5, 3] });
+    assert.deepEqual(store.spaces[0].temporaryTabs, [5, 1]);
+});

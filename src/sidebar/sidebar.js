@@ -49,7 +49,7 @@ import {
     startPendingClean,
     undoPendingClean
 } from './features/clean-all/clean-all.js';
-import { UNDO_WINDOW_MS } from '../shared/pending-clean.js';
+import { UNDO_WINDOW_MS, CLOSE_GRACE_MS } from '../shared/pending-clean.js';
 import { loadFolderCollapsed, saveFolderCollapsed } from './folder-state.js';
 import {
     FOLDER_CLOSED_ICON,
@@ -4104,6 +4104,7 @@ async function cleanTemporaryTabs(spaceId) {
     await pendingSpaceSaves;
     const cleared = await clearTabs(closable, spaceId, [...space.temporaryTabs], {
         addArchivedTab: entry => Utils.addArchivedTab(entry),
+        removeArchivedTab: (url, targetSpaceId) => Utils.removeArchivedTab(url, targetSpaceId),
         activeTabId: activeChromeTabId,
         displayOrder: displayedTabIds(spaceId),
         openTabIds: async () => (await chrome.tabs.query({ windowId: currentWindow.id })).map(tab => tab.id),
@@ -4130,7 +4131,8 @@ async function cleanTemporaryTabs(spaceId) {
             await adoptStoredSpaces(await spaceRequest('get'));
             await refreshActiveSpaceUI();
         },
-        UNDO_WINDOW_MS
+        // Ends before the worker closes the tabs, however long the round trip and render took.
+        Math.min(UNDO_WINDOW_MS, cleared.closeAt - Date.now() - CLOSE_GRACE_MS / 2)
     );
 }
 
