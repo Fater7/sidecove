@@ -1,4 +1,5 @@
 import { launchBrowserWithExtension, openSidebar, openOptionsPage } from './helpers/extension-helper.js';
+import { dragOnto } from './helpers/drag.js';
 
 let browser, page, options, first, second, pinA, pinB;
 const visiblePins = () =>
@@ -21,24 +22,11 @@ const switchTo = async id => {
     await new Promise(resolve => setTimeout(resolve, 300));
 };
 
-// Drag and drop is dispatched as DOM events so it works while Chrome focuses other tabs.
 const dropPinOnChip = (tabId, spaceId) =>
-    page.evaluate(
-        ({ tabId, spaceId }) => {
-            const source = document.querySelector(`#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`);
-            const target = document.querySelector(`#spaceSwitcher button[data-space-id="${spaceId}"]`);
-            if (!source || !target) throw new Error('missing drag source or space chip');
-            const dataTransfer = new DataTransfer();
-            const r = target.getBoundingClientRect();
-            const point = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
-            source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
-            target.dispatchEvent(
-                new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, ...point })
-            );
-            target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, ...point }));
-            source.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer }));
-        },
-        { tabId, spaceId }
+    dragOnto(
+        page,
+        `#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`,
+        `#spaceSwitcher button[data-space-id="${spaceId}"]`
     );
 
 beforeAll(async () => {
@@ -125,24 +113,39 @@ test('toggling sharing preserves assignments and the saved option', async () => 
 });
 
 test('with separate favorites, a pin dropped on a space chip stays pinned and moves to that space', async () => {
-    // The previous test left separate favorites on and the first space selected, showing only pinA.
+    // Separate favorites on, with the first space selected so only pinA shows.
+    if (!(await options.$eval('#perSpacePinnedFavorites', input => input.checked)))
+        await options.$eval('#perSpacePinnedFavorites', input => input.click());
     await switchTo(first);
     await waitForPins([pinA]);
-    await dropPinOnChip(pinA, second);
-    await waitForPins([]);
-    await switchTo(second);
-    await waitForPins([pinA, pinB]);
-    expect(await page.evaluate(id => chrome.tabs.get(id).then(tab => tab.pinned), pinA)).toBe(true);
-    const owner = await page.evaluate(async id => {
-        const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
-        return spaces.find(space => space.pinnedTabs.includes(id))?.id;
-    }, pinA);
-    expect(owner).toBe(second);
-    // Put it back so the tests below start from the same assignments.
-    await dropPinOnChip(pinA, first);
-    await waitForPins([pinB]);
-    await switchTo(first);
-    await waitForPins([pinA]);
+    try {
+        await dropPinOnChip(pinA, second);
+        await waitForPins([]);
+        await switchTo(second);
+        await waitForPins([pinA, pinB]);
+        expect(await page.evaluate(id => chrome.tabs.get(id).then(tab => tab.pinned), pinA)).toBe(true);
+        const owner = await page.evaluate(async id => {
+            const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
+            return spaces.find(space => space.pinnedTabs.includes(id))?.id;
+        }, pinA);
+        expect(owner).toBe(second);
+    } finally {
+        // Put the pin back so the tests below start from the same assignments.
+        await page.evaluate(
+            async ({ id, spaceId }) => {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'spaceStore',
+                    action: 'assignPin',
+                    tabId: id,
+                    spaceId
+                });
+                if (!response.success) throw new Error(response.error);
+            },
+            { id: pinA, spaceId: first }
+        );
+        await switchTo(first);
+        await waitForPins([pinA]);
+    }
 });
 
 test('unpinning removes the icon and returns the tab to its space', async () => {
