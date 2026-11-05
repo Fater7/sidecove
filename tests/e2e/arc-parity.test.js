@@ -183,6 +183,8 @@ describe('Clear', () => {
             )
         ).filter(s => s.name === 'Work');
         for (const path of ['clean-one', 'clean-two', 'clean-three']) await openTab(path, work.id);
+        // Switching to the empty Work opened a New Tab in it; leaving it empty closes it.
+        await page.evaluate(async () => chrome.tabs.update((await chrome.tabs.getCurrent()).id, { active: true }));
         await page.waitForFunction(
             () => document.querySelectorAll('.space.active [data-tab-type="temporary"] .tab[data-tab-id]').length === 3,
             { polling: 100 }
