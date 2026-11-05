@@ -15,7 +15,7 @@ Impersonation & Intellectual Property):
 ----------------------------------------------------------------------
 TITLE (the manifest "name"; 75 characters at most)
 ----------------------------------------------------------------------
-Sidecove: Arc-style Spaces and Vertical Tabs for Chrome
+Sidecove: Arc-style Spaces
 
 ----------------------------------------------------------------------
 SUMMARY (the manifest "description"; 132 characters at most)
