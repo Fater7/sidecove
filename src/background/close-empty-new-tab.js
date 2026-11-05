@@ -39,16 +39,17 @@ export function registerCloseEmptyNewTab({ chromeApi = chrome, spaceStore, getSe
         if (!settings.closeEmptyNewTabs) return;
         const tab = await chromeApi.tabs.get(tabId);
         if (tab.windowId !== windowId) return;
-        const [windowTabs, spaces, bindings] = await Promise.all([
+        const [windowTabs, { spaces, hidden }, bindings] = await Promise.all([
             chromeApi.tabs.query({ windowId }),
-            spaceStore.run(() => spaceStore.spaces),
+            spaceStore.run(() => ({ spaces: spaceStore.spaces, hidden: new Set(spaceStore.hidden) })),
             Utils.getPinnedTabStates()
         ]);
         const close = shouldCloseEmptyNewTab({
             enabled: true,
             tab,
             untouched: untouched.has(tabId),
-            windowTabCount: windowTabs.length,
+            // Tabs Clean All is hiding are about to close, so they do not make this tab less than the last.
+            windowTabCount: windowTabs.filter(windowTab => !hidden.has(windowTab.id)).length,
             protectedIds: new Set(spaces.flatMap(space => space.spaceBookmarks)),
             bindings
         });

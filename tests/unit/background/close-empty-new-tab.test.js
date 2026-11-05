@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { registerCloseEmptyNewTab, EMPTY_TAB_STORAGE_KEY } from '../../../src/background/close-empty-new-tab.js';
 
 const NTP = 'chrome://newtab/';
-let tabs, session, removed, settings, spaces, pinnedStates, listeners;
+let tabs, session, removed, settings, spaces, hidden, pinnedStates, listeners;
 
 const event = name => ({ addListener: fn => (listeners[name] = fn) });
 const chromeApi = () => ({
@@ -42,6 +42,9 @@ const start = async () => {
             run: async operation => operation.call(null),
             get spaces() {
                 return spaces;
+            },
+            get hidden() {
+                return hidden;
             }
         },
         getSettings: async () => settings
@@ -76,6 +79,7 @@ beforeEach(() => {
     removed = [];
     settings = { closeEmptyNewTabs: true };
     spaces = [{ id: 'a', spaceBookmarks: [] }];
+    hidden = new Set();
     pinnedStates = {};
     listeners = {};
 });
@@ -223,4 +227,21 @@ test('forgets a window that closes', async () => {
     await listeners.windowRemoved(1);
     await settle();
     assert.deepEqual(session[EMPTY_TAB_STORAGE_KEY].shown, []);
+});
+
+test('keeps the new tab when every other tab in the window is hidden by Clear', async () => {
+    await start();
+    await openNewTab(2);
+    hidden = new Set([1]);
+    await switchTo(1);
+    assert.deepEqual(removed, [], 'the hidden tab closes soon, so this would be the last tab');
+});
+
+test('still closes it when a tab that is not hidden remains', async () => {
+    tabs.push({ id: 3, windowId: 1, url: 'https://three.test/', active: false, pinned: false });
+    await start();
+    await openNewTab(2);
+    hidden = new Set([1]);
+    await switchTo(3);
+    assert.deepEqual(removed, [2]);
 });

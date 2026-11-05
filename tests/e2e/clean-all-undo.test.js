@@ -313,4 +313,52 @@ describe('Clean All with Undo', () => {
         expect(await activeTabId(sidebar)).toBe(newTab.id);
         await sidebar.close();
     }, 60000);
+
+    // Not the sidebar's Clear button: its page is a tab of the first window here, and this window has to
+    // hold only ordinary tabs. The messages are the ones the sidebar sends.
+    test('a window of only ordinary tabs keeps its New Tab when you pick a cleared tab in Chrome', async () => {
+        const { sidebar, spaceId } = await newSpace();
+        const win = await sidebar.evaluate(async base => {
+            const created = await chrome.windows.create({
+                url: [`${base}/win-one`, `${base}/win-two`],
+                focused: false
+            });
+            return { id: created.id, tabIds: created.tabs.map(t => t.id) };
+        }, base);
+        await sidebar.evaluate(
+            (tabIds, spaceId) =>
+                Promise.all(
+                    tabIds.map(tabId =>
+                        chrome.runtime.sendMessage({ type: 'spaceStore', action: 'assign', tabId, spaceId })
+                    )
+                ),
+            win.tabIds,
+            spaceId
+        );
+        // What Clear does first: step off the tabs to a New Tab, then hide the rest.
+        const newTab = await sidebar.evaluate(
+            async windowId => (await chrome.tabs.create({ windowId, active: true })).id,
+            win.id
+        );
+        await sleep(500);
+        const started = await sidebar.evaluate(
+            (tabIds, spaceId) =>
+                chrome.runtime.sendMessage({ type: 'pendingClean', action: 'start', spaceId, tabIds, order: [] }),
+            win.tabIds,
+            spaceId
+        );
+        expect(started.success).toBe(true);
+        await sleep(500);
+        // Clicking a cleared tab in Chrome's own tab strip, or Cmd+1.
+        await sidebar.evaluate(id => chrome.tabs.update(id, { active: true }), win.tabIds[0]);
+
+        await sleep(AFTER_UNDO_WINDOW);
+        const left = await sidebar.evaluate(async windowId => {
+            const windows = await chrome.windows.getAll({ populate: true });
+            return windows.find(w => w.id === windowId)?.tabs.map(t => t.id) ?? null;
+        }, win.id);
+        expect(left).toEqual([newTab]);
+        await sidebar.evaluate(windowId => chrome.windows.remove(windowId), win.id);
+        await sidebar.close();
+    }, 60000);
 });
