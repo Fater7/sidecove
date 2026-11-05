@@ -1339,7 +1339,22 @@ async function moveItemsToSpace(items, spaceId) {
 
 async function moveItemToSpace(item, target) {
     if (item.kind === 'pinned') {
-        await adoptStoredSpaces(await spaceRequest('assignPin', { tabId: item.tabId, spaceId: target.id }));
+        const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
+        if (perSpacePinnedFavorites) {
+            // Each space has its own favorites: the pin moves there and stays pinned.
+            await adoptStoredSpaces(await spaceRequest('assignPin', { tabId: item.tabId, spaceId: target.id }));
+        } else {
+            // Favorites are shared, so a pin has no space to move to: unpin it into the chosen one, as Arc does.
+            const tabId = item.tabId;
+            // Unpinning normally files the tab under the active space; this move picks the space.
+            tabsMovingToChosenSpace.add(tabId);
+            try {
+                await chrome.tabs.update(tabId, { pinned: false });
+                await moveTabToSpace(tabId, target.id, false);
+            } finally {
+                setTimeout(() => tabsMovingToChosenSpace.delete(tabId), 1000);
+            }
+        }
         await updatePinnedFavicons();
         return;
     }

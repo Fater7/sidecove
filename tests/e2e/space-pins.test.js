@@ -21,6 +21,26 @@ const switchTo = async id => {
     await new Promise(resolve => setTimeout(resolve, 300));
 };
 
+// Drag and drop is dispatched as DOM events so it works while Chrome focuses other tabs.
+const dropPinOnChip = (tabId, spaceId) =>
+    page.evaluate(
+        ({ tabId, spaceId }) => {
+            const source = document.querySelector(`#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`);
+            const target = document.querySelector(`#spaceSwitcher button[data-space-id="${spaceId}"]`);
+            if (!source || !target) throw new Error('missing drag source or space chip');
+            const dataTransfer = new DataTransfer();
+            const r = target.getBoundingClientRect();
+            const point = { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 };
+            source.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
+            target.dispatchEvent(
+                new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, ...point })
+            );
+            target.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, ...point }));
+            source.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer }));
+        },
+        { tabId, spaceId }
+    );
+
 beforeAll(async () => {
     const result = await launchBrowserWithExtension();
     browser = result.browser;
@@ -99,6 +119,27 @@ test('toggling sharing preserves assignments and the saved option', async () => 
     await options.waitForSelector('#perSpacePinnedFavorites');
     expect(await options.$eval('#perSpacePinnedFavorites', input => input.checked)).toBe(false);
     await options.$eval('#perSpacePinnedFavorites', input => input.click());
+    await waitForPins([pinB]);
+    await switchTo(first);
+    await waitForPins([pinA]);
+});
+
+test('with separate favorites, a pin dropped on a space chip stays pinned and moves to that space', async () => {
+    // The previous test left separate favorites on and the first space selected, showing only pinA.
+    await switchTo(first);
+    await waitForPins([pinA]);
+    await dropPinOnChip(pinA, second);
+    await waitForPins([]);
+    await switchTo(second);
+    await waitForPins([pinA, pinB]);
+    expect(await page.evaluate(id => chrome.tabs.get(id).then(tab => tab.pinned), pinA)).toBe(true);
+    const owner = await page.evaluate(async id => {
+        const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
+        return spaces.find(space => space.pinnedTabs.includes(id))?.id;
+    }, pinA);
+    expect(owner).toBe(second);
+    // Put it back so the tests below start from the same assignments.
+    await dropPinOnChip(pinA, first);
     await waitForPins([pinB]);
     await switchTo(first);
     await waitForPins([pinA]);
