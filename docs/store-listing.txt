@@ -30,13 +30,14 @@ Missing Arc's sidebar? Sidecove brings its way of organising tabs to Chrome's si
 Sidecove is for people moving from Arc to Chrome, and for anyone who wants vertical tabs and spaces without changing browser. It stays close to what Arc's spaces set out to do and adds to it where that helps.
 
 SPACES
-- Separate your tabs into spaces, such as Work, Home or a project. Each space has its own colour and icon, chosen from line symbols or emoji.
+- Separate your tabs into spaces, such as Work, Home or a project. Each space has its own colour and icon, chosen from line symbols or emoji. In dark mode each colour becomes a dark surface tinted with it, and Settings has a light and a dark picker for each colour.
 - The space bar shows every space as an icon, or as a name chip if you prefer names. Switch with a click, the keyboard, or your mouse's side buttons.
 - Move a tab, pinned tab or folder to another space by dropping it on the space's icon.
-- New tabs open in the space you are using, including links opened from other apps.
+- New tabs open in the space you are using, including links opened from other apps. A link you open from a tab lands directly below that tab.
+- Switch to a space with no open tab and a New Tab opens in it. Close the tab you are on and you stay in the same space.
 
 FAVOURITES AND PINNED TABS
-- Favourites are the row of site icons at the top. They are Chrome's own pinned tabs and follow you into every space.
+- Favourites are the row of site icons at the top. They are Chrome's own pinned tabs and follow you into every space, or, if you turn on "Separate favorites for each space" in Settings, each space shows only its own.
 - Pinned tabs belong to a single space. Each space keeps its own pinned tabs and nested folders (up to four levels deep).
 - An open pinned tab shows a minus button that closes the tab and keeps the pin; a closed one opens in its own new tab.
 - Hold one tab over a pinned tab for a moment and drop it to make a folder of the two.
@@ -45,7 +46,8 @@ FAVOURITES AND PINNED TABS
 KEEPS TABS TIDY
 - Auto-archive is optional and off until you turn it on in Settings. It then closes tabs you have not used for the time you choose. Favourites and pinned tabs are never closed this way.
 - Archived tabs are listed so you can open them again.
-- "↓ Clear", on the divider above New Tab, closes a space's open tabs into the archive, with Undo.
+- "↓ Clear", on the divider above New Tab, closes a space's open tabs into the archive. Undo is on offer for 8 seconds and brings every tab back.
+- A New Tab you leave empty closes by itself when you switch to another tab. It is on by default and can be turned off in Settings.
 - Search your open tabs, pinned tabs and favourites across every space (Cmd or Ctrl+F).
 - Select several tabs with Cmd or Ctrl click and Shift click, then move, pin, archive, close or put them in a folder together.
 
@@ -54,7 +56,7 @@ KEYBOARD SHORTCUTS
 - Alt+D pins or unpins the current tab (with the side panel open).
 - Alt+Shift+C copies the current tab's address.
 - With the sidebar focused: Ctrl+1 to Ctrl+8 jump to a space, Ctrl+9 to the last one, Ctrl+Shift+[ and ] step through them.
-- Shortcuts for next and previous space, next and previous tab in a space, and a numbered space can be set at chrome://extensions/shortcuts, where you can also change the ones above. The pin and tab shortcuts need the side panel open.
+- Shortcuts for next and previous space, next and previous tab in a space, the most recently used tab in a space, and a numbered space can be set at chrome://extensions/shortcuts, where you can also change the ones above. The pin and tab shortcuts need the side panel open.
 
 HOW IT DIFFERS FROM ARC
 - Sidecove is an extension, not a browser. You keep Chrome, your profile, your other extensions and your Google account.
