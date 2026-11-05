@@ -419,27 +419,38 @@ describe('moving things between spaces', () => {
         );
     });
 
-    test('a Chrome-pinned favicon dropped on a chip is unpinned into that space', async () => {
+    // With shared favorites (the default) a pin belongs to every space, so there is nothing to move.
+    test('a Chrome-pinned favicon dropped on a chip stays pinned and in the favorites bar of every space', async () => {
         const tabId = await page.evaluate(
             async url => (await chrome.tabs.create({ url, pinned: true, active: false })).id,
             `${base}/pinned-chip`
         );
-        await page.waitForSelector(`#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`);
-        await dragOnto(`#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`, await chip('Music'));
-        await page.waitForFunction(
-            async ({ tabId, musicId }) => {
-                const tab = await chrome.tabs.get(tabId);
-                const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
-                return !tab.pinned && spaces.find(s => s.id === musicId).temporaryTabs.includes(tabId);
-            },
-            { polling: 100 },
-            { tabId, musicId: music.id }
-        );
+        const favicon = `#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`;
+        await page.waitForSelector(favicon);
+        await dragOnto(favicon, await chip('Music'));
+        // Give a wrong unpin time to show up before asserting that nothing changed.
         await sleep(1200);
-        const owner = (await storedSpaces()).find(
+        expect(await page.evaluate(async id => (await chrome.tabs.get(id)).pinned, tabId)).toBe(true);
+        expect(await page.$(favicon)).not.toBeNull();
+        expect(await activeSpaceName()).toBe('Home');
+        for (const name of ['Music', 'Home']) {
+            await page.$eval(await chip(name), button => button.click());
+            await page.waitForFunction(
+                name => document.querySelector('.space.active .space-name').value === name,
+                {
+                    polling: 100
+                },
+                name
+            );
+            expect(await page.$(favicon)).not.toBeNull();
+        }
+        // The pin is no ordinary tab of any space.
+        const owners = (await storedSpaces()).filter(
             s => s.temporaryTabs.includes(tabId) || s.spaceBookmarks.includes(tabId)
         );
-        expect(owner.name).toBe('Music');
+        expect(owners).toEqual([]);
+        await page.evaluate(id => chrome.tabs.remove(id), tabId);
+        await page.waitForFunction(selector => !document.querySelector(selector), { polling: 100 }, favicon);
     });
 });
 
