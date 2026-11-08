@@ -209,7 +209,7 @@ export function showTabContextMenu(
     createSpaceFromInactive,
     onReplaceBookmarkUrlWithCurrent = null,
     moveFavoriteToSpace = null,
-    { muted = false, onRename = null } = {}
+    { muted = false, onRename = null, onAddFavorite = null } = {}
 ) {
     // Remove any existing context menus
     const existingMenu = document.getElementById('tab-context-menu');
@@ -226,17 +226,19 @@ export function showTabContextMenu(
 
     // --- Menu Items ---
 
-    // Only show these options for actual tabs that are part of a space
-    if (!isBookmarkOnly) {
+    if (onAddFavorite) {
         const addToFavoritesOption = document.createElement('div');
         addToFavoritesOption.className = 'context-menu-item';
         addToFavoritesOption.textContent = 'Add to Favorites';
         addToFavoritesOption.addEventListener('click', async () => {
-            await chrome.tabs.update(tab.id, { pinned: true });
+            await onAddFavorite(tab);
             contextMenu.remove();
         });
         contextMenu.appendChild(addToFavoritesOption);
+    }
 
+    // Only show these options for actual tabs that are part of a space
+    if (!isBookmarkOnly) {
         const pinInSpaceOption = document.createElement('div');
         pinInSpaceOption.className = 'context-menu-item';
         pinInSpaceOption.textContent = isPinned ? 'Unpin Tab' : 'Pin Tab';

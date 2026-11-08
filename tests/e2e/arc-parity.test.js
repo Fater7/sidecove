@@ -402,28 +402,24 @@ describe('moving things between spaces', () => {
         );
     });
 
-    // With shared favorites (the default) a pin is a favorite in every space, so the drop changes nothing you see.
-    test('a Chrome-pinned favicon dropped on a chip stays pinned and in the favorites bar of every space', async () => {
-        const tabId = await page.evaluate(
-            async url => (await chrome.tabs.create({ url, pinned: true, active: false })).id,
-            `${base}/pinned-chip`
-        );
-        const favicon = `#pinnedFavicons .pinned-favicon[data-tab-id="${tabId}"]`;
+    test('a favorite dropped on a space remains available in every space when shared', async () => {
+        const bookmarkId = await page.evaluate(async url => {
+            const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+            return (await chrome.bookmarks.create({ parentId: root.id, title: 'Shared favorite', url })).id;
+        }, `${base}/pinned-chip`);
+        const favicon = `#pinnedFavicons .pinned-favicon[data-bookmark-id="${bookmarkId}"]`;
         try {
             await page.waitForSelector(favicon);
             await dragOnto(favicon, await chip('Music'));
-            // The drop reached the panel: the store now records the pin under Music.
             await page.waitForFunction(
-                async ({ tabId, musicId }) => {
+                async ({ bookmarkId, musicId }) => {
                     const { spaces } = await chrome.runtime.sendMessage({ type: 'spaceStore', action: 'get' });
-                    return spaces.find(s => s.id === musicId).pinnedTabs.includes(tabId);
+                    const { favoriteBookmarkOwners = {} } = await chrome.storage.local.get('favoriteBookmarkOwners');
+                    return favoriteBookmarkOwners[bookmarkId] === spaces.find(s => s.id === musicId).bookmarkFolderId;
                 },
                 { polling: 100 },
-                { tabId, musicId: music.id }
+                { bookmarkId, musicId: music.id }
             );
-            // Let a wrong unpin, which follows the same drop, show up before asserting there is none.
-            await sleep(500);
-            expect(await page.evaluate(async id => (await chrome.tabs.get(id)).pinned, tabId)).toBe(true);
             expect(await page.$(favicon)).not.toBeNull();
             expect(await activeSpaceName()).toBe('Home');
             for (const name of ['Music', 'Home']) {
@@ -435,13 +431,8 @@ describe('moving things between spaces', () => {
                 );
                 expect(await page.$(favicon)).not.toBeNull();
             }
-            // The pin did not become an ordinary tab of any space.
-            const owners = (await storedSpaces()).filter(
-                s => s.temporaryTabs.includes(tabId) || s.spaceBookmarks.includes(tabId)
-            );
-            expect(owners).toEqual([]);
         } finally {
-            await page.evaluate(id => chrome.tabs.remove(id), tabId);
+            await page.evaluate(id => chrome.bookmarks.remove(id), bookmarkId);
         }
     });
 });
