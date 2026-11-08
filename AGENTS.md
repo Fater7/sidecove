@@ -1,105 +1,27 @@
-# Sidecove: rules for contributors and coding agents
+# FaterSide 开发入口
 
-## Fater7 自用维护
+FaterSide 是 Sidecove 的自用 fork：Chrome Manifest V3 扩展，用原生侧边栏管理 Space、标签页和收藏。技术栈是 JavaScript ES modules、HTML/CSS、Vite，无框架。
 
-- 仓库是 `git@github.com:Fater7/sidecove.git` 的自用 fork，长期维护分支为 `fater7/main`。
-  默认在该分支完成用户请求；完成后直接提交并推送到 `origin/fater7/main`，无需重复询问。
-- 用户需要实际使用结果。涉及扩展代码的改动完成并验证后，构建 `dist/`，在用户当前 Chrome
-  配置中直接安装或重新加载该目录，并打开侧栏确认结果。保留其他标签页和用户数据；首次安装时
-  通过浏览器界面处理权限提示。Chrome 商店版和解压版是不同扩展；自用版安装验证完成后，卸载
-  商店版，只保留自用版，避免两份扩展同时读写 Sidecove 数据。
-- 本地目录：`/Users/bytedance/SProjects/sidecove`；Chrome 加载的固定目录是该仓库下的
-  `dist/`。保持路径稳定，以便后续重新构建和在扩展管理页重新加载。不要直接改 Chrome 商店版文件。
-- 自用开发以当前需求为准，不为旧版状态编写自动迁移或额外兼容逻辑；需要时用户可以重新设置。
-  不要为此删除现有书签或其他用户数据。
-- 运行仓库要求的单元测试、构建和与改动相关的验证；不因追求历史版本兼容而扩大测试范围。
-  本机需要 Node 24；如果 `node` 不在 PATH，可使用
-  `PATH="$HOME/.nvm/versions/node/v22.16.0/bin:$PATH" npx --yes --package=node@24 -c '<命令>'`。
-- Favorites 顶部图标是 `FaterSide` 根目录下的书签，空间是同一目录下的子文件夹。图标不依赖打开的
-  标签页；右键删除收藏，拖入侧栏顶部添加。空间归属保存在扩展本地设置中。
+## 开始工作
 
-Sidecove is a Manifest V3 Chrome extension that shows tabs in Chrome's side panel, grouped
-into spaces with pinned tabs and favourites. It is published on the Chrome Web Store and its
-permissions were approved in a security review. Plain JavaScript (ES modules), built with
-Vite, no framework, no runtime dependencies.
+- 仓库：`/Users/bytedance/SProjects/sidecove`；远端：`git@github.com:Fater7/sidecove.git`；长期维护分支：`fater7/main`。先检查当前分支和未提交改动。
+- 按需求查看 [ARCHITECTURE.md](ARCHITECTURE.md) 的架构和功能入口、[DEVELOPMENT.md](DEVELOPMENT.md) 的运行验证流程；用户连续提出的需求记在 [WORKLIST.md](WORKLIST.md)，完成后更新状态。
+- 按用户当前要求直接实施，不擅自增加功能或改变其他行为。保留现有书签和用户数据，除非用户明确要求处理。
+- 以自用需求为准，不为旧状态额外设计迁移；需要兼容或保留的数据以用户当前要求为准。同步上游前先核对自用改动，不把商店版当作本 fork 发布。
 
-## Commands
+## 开发与交付
 
-- `npm ci`: install (CI uses Node from `.nvmrc`).
-- `npm run build`: production build to `dist/`. `npm run dev`: watch build to `dist-dev/`.
-- `npm run test:unit`: fast unit tests (`node:test`), no browser. Run before every commit.
-- `npm run lint`: ESLint, including the folder-boundary rules below. `npm run format`: Prettier.
-- `npm run test:e2e`: builds, then drives real Chrome with Puppeteer. Slow; it runs locally before a PR is opened or updated, with the result in the PR description (`npm run test:e2e:local`).
-- `npm run verify:dist`: fails if anything in `dist/` points at a file the build does not contain.
-- `npm run zip`: packages `dist/` as `sidecove-extension.zip`.
+- 用 Node 24（`.nvmrc`）；依赖缺失时运行 `npm ci`。本机可执行命令见 `DEVELOPMENT.md`。
+- 提交前运行 `npm run test:unit`。按改动运行必要的 lint、构建和相关测试；使用真实 Chrome 或浏览器测试验证用户可见的行为。测试和重载步骤见 `DEVELOPMENT.md`。
+- 扩展代码改动后执行 `npm run build` 和 `npm run verify:dist`。当前 Chrome 加载的固定目录是本仓库 `dist/`；直接在 `chrome://extensions/` 重新加载 FaterSide，打开侧栏确认。保留其他标签页、扩展设置和用户数据；安装或重载结果需实际核对。
+- 不要为更新而卸载后重装，以免更换 ID 或丢失设置、快捷键。用户将 `⌘S` 指派为侧栏开关，重载后保留该指派。
+- 触摸板手势和动画手感不能仅凭模拟滚轮或截图认定通过；说明验证范围，由用户实际体验。
+- 完成用户请求后直接在 `fater7/main` 提交并推送至 `origin/fater7/main`，无需再次询问。只暂存本次改动；行为变更在 `CHANGELOG.md` 的 Unreleased 下补一行。无需因自用改动执行上游商店发布流程。
 
-## Where code goes
+## 实现约束
 
-- `src/<context>/` holds code that runs in one extension context:
-  `background/` (service worker, no DOM), `sidebar/` (side panel), `options/`, `onboarding/`,
-  `offscreen/`. `content/` is reserved; creating it needs a security review (see Permissions).
-- `src/shared/` holds only code imported by two or more contexts. It must not touch
-  `document` or `window` at import time, because the service worker imports it.
-  `shared/styles.css` is the stylesheet the side panel and the settings page both load.
-- A new sidebar feature gets its own folder, `src/sidebar/features/<feature>/`. The entry file
-  `src/sidebar/sidebar.js` only wires features together: do not add feature logic to it, and
-  when you change logic in it, move that logic out into its feature's folder.
-- Put pure logic (no `chrome.*`, no DOM) in its own module so it can be unit tested. Pass
-  `chrome` in as an argument where a module needs it, as `background/url-copy.js` does.
-- HTML pages live at the top of `src/` and build to the top of `dist/`. Their file names are
-  public URLs: do not rename them.
-- Static files that must keep their path go in `public/assets/` and are referenced by absolute
-  path (`/assets/icon.png`), so the build does not emit a second hashed copy.
-- Imports flow inwards only: a context may import `shared/`; `shared/` never imports a context;
-  contexts never import each other. ESLint enforces this.
-- Prefer a new small file over growing a large one. When a change adds to a file of more than
-  about 400 lines, split the part it touches out by feature in the same change.
-
-## Invariants (do not break these)
-
-- **Permissions:** never add a permission, host permission, content script, `externally_connectable`
-  or remote code without saying so in the PR title. That change needs a new security review.
-- **Privacy:** no network requests, analytics or remote fonts or scripts. `PRIVACY.md` must stay true.
-- **Space model:** the service worker is the only writer (`shared/space-store.js`). Panels send
-  patches through `shared/space-client.js` and never write `spaces` to storage themselves.
-- **Durable data:** favourites and spaces live under the bookmark folder titled `ROOT_FOLDER_TITLE`
-  (`FaterSide`). Auto-archive must never close a protected favourite.
-- **Stored keys and IDs:** preserve storage keys, bookmark folder names, extension page URLs and
-  `manifest.json` commands where practical. Renaming a command resets shortcuts. Do not add an
-  upgrade migration solely for this personal fork; the user can reconfigure it when needed.
-- **Messages:** in `chrome.runtime.onMessage`, return `true` or a Promise only for messages you
-  handle. Never return a Promise for unrelated messages.
-- **Clipboard:** copy through the offscreen document, never by injecting into pages.
-
-## Tests
-
-- Unit tests mirror `src/`: `src/sidebar/selection.js` -> `tests/unit/sidebar/selection.test.js`.
-  A new module with logic gets a unit test there. Tests import modules; do not read source
-  files as text.
-- A change users can see gets an end-to-end test in `tests/e2e/`. Shared helpers go in
-  `tests/e2e/helpers/`.
-- Run the upgrade test when an upgrade path is explicitly part of the task.
-- Refactors change no assertions. If a refactor needs a test change beyond import paths, it is
-  not a refactor; split it out.
-- `tests/manual/` holds the checklists to run on the built zip before a release.
-
-## Style
-
-- ES modules, `const`/`let`, async/await. File names are kebab-case. Run `npm run format`
-  instead of formatting by hand; CI checks it.
-- Use `Logger` from `shared/logger.js`, not `console`, so debug logging stays behind the setting.
-- Comments explain why, not what. Keep them short.
-
-## Changes and releases
-
-- Every pull request adds a line to `CHANGELOG.md` under `Unreleased`, in plain words; say so
-  when users will not notice the change.
-- Version numbers change only in a release PR (`npm run release <type>`), in `package.json`
-  and `manifest.json` together. After it merges, `npm run release:tag` pushes the tag `vX.Y.Z`;
-  `release.yml` builds the zip, checksum, provenance and notes (see `CONTRIBUTING.md`).
-- A release that changes how Sidecove looks (colours, layout, icons, spacing, new or moved controls)
-  must refresh the Chrome Web Store screenshots and the README images in `docs/` from that release's
-  build before it is submitted; if nothing looks different, the release PR says so. The store text to
-  paste is `docs/store-listing.txt`: keep it true to what ships, and name Arc only descriptively.
-- Third-party code or assets: add the licence to `THIRD_PARTY_NOTICES.md` in the same change.
-- Keep `README.md` (users), `CONTRIBUTING.md` (developers) and this file in step with the code.
+- 新侧栏功能优先放 `src/sidebar/features/<feature>/`，现有逻辑按本次需求逐步拆分；不要为拆分而大范围重构。纯逻辑与 DOM、Chrome API 分开，跨上下文代码放 `src/shared/`。目录依赖方向见架构文档和 ESLint 配置。
+- Space 状态由后台的 `SpaceStore` 维护；侧栏通过 `spaceRequest` 请求修改，不能直接写 `chrome.storage.local.spaces`。书签本身使用 Chrome Bookmarks API，具体写入入口见架构文档。
+- `FaterSide` 是实际书签根目录名和数据键，空间、收藏和快捷键不能因改名或重装意外丢失。保留扩展页面 URL、storage 键和 `manifest.json` command 名；Chrome 绑定快捷键依赖 command 名。
+- 不增加未经需求支持的权限、内容脚本、远程代码、埋点或网络请求；变更权限时在交付中说明并同步隐私说明。消息监听器只对自己处理的消息返回 `true` 或 Promise。复制链接继续通过 offscreen 文档完成。
+- 静态资源使用 `public/assets/` 的稳定路径。使用项目现有代码风格和 `Logger`；相关文档随行为变化更新。`CLAUDE.md` 是本文件的软链接。
