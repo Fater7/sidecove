@@ -229,4 +229,24 @@ describe('switching to a space with no open tab', () => {
         expect(await sidebar.$eval('.space.active .space-name', input => input.value)).toBe('Two');
         expect((await activeTab()).id).toBe(twoLast);
     });
+
+    test('one long horizontal wheel gesture switches only once', async () => {
+        await clickChip('Home');
+        await until(activeTab, tab => tab.id === homeTab, 'Home should show its last tab');
+        const prevented = [];
+        for (let i = 0; i < 6; i++) {
+            prevented.push(
+                await sidebar.evaluate(() => {
+                    const event = new WheelEvent('wheel', { deltaX: 30, bubbles: true, cancelable: true });
+                    document.getElementById('sidebar-container').dispatchEvent(event);
+                    return event.defaultPrevented;
+                })
+            );
+            await wait(120);
+        }
+        await wait(500);
+        expect(await sidebar.$eval('.space.active .space-name', input => input.value)).toBe('Two');
+        expect((await activeTab()).id).toBe(twoLast);
+        expect(prevented).toEqual([true, true, true, true, true, true]);
+    });
 });

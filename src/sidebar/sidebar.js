@@ -35,6 +35,7 @@ import { RefreshCoordinator } from './refresh-coordinator.js';
 import { EditSessionRegistry } from './edit-sessions.js';
 import { wireNewTabRow } from './features/new-tab/new-tab-row.js';
 import { createSpaceTabShower } from './features/space-switch/show-space-tab.js';
+import { createTrackpadSwipeHandler } from './features/space-switch/trackpad-swipe.js';
 import { isProtectedFavorite } from '../shared/favorite-safety.js';
 import {
     selectWindowSpaceTabs,
@@ -450,10 +451,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // --- Space Switching with Trackpad Swipe and Mouse Side Buttons ---
-    let isSwiping = false;
-    let swipeTimeout = null;
-    const swipeThreshold = 25; // Min horizontal movement to trigger a swipe
-
     // Side buttons switch spaces anywhere in the panel, as in Arc.
     document.addEventListener('mouseup', async event => {
         if (event.button !== MOUSE_BUTTON.BACK && event.button !== MOUSE_BUTTON.FORWARD) {
@@ -489,9 +486,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         applySpaceRequest(request).catch(error => Logger.error('Could not switch space:', error));
     });
 
+    const handleTrackpadSwipe = createTrackpadSwipeHandler(delta => {
+        switchSpaceBy(delta).catch(error => Logger.error('Could not switch space:', error));
+    });
     document.getElementById('sidebar-container').addEventListener(
         'wheel',
-        async event => {
+        event => {
             // Defense-in-depth: ignore wheel events that originate inside the
             // chip strip. The strip lives inside #sidebar-container, so without
             // this guard a horizontal swipe meant to scroll the chips would also
@@ -505,24 +505,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Ignore vertical scrolling or if a swipe is already being processed
-            if (Math.abs(event.deltaX) < Math.abs(event.deltaY) || isSwiping) {
-                return;
-            }
-
-            if (Math.abs(event.deltaX) > swipeThreshold) {
-                isSwiping = true;
-                event.preventDefault(); // Stop browser from navigating back/forward
-
-                // deltaX < 0 -> previous space, deltaX > 0 -> next space
-                await switchSpaceBy(event.deltaX < 0 ? -1 : 1);
-
-                // Cooldown to prevent re-triggering during the same gesture
-                clearTimeout(swipeTimeout);
-                swipeTimeout = setTimeout(() => {
-                    isSwiping = false;
-                }, 400); // 400ms cooldown
-            }
+            handleTrackpadSwipe(event);
         },
         { passive: false }
     ); // 'passive: false' is required to use preventDefault()
