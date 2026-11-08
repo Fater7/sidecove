@@ -108,6 +108,7 @@ async function saveOptions() {
         autoArchiveIdleMinutes: parseInt(autoArchiveIdleMinutesInput?.value, 10) || 360,
         perSpacePinnedFavorites: getCheckboxValue(document.getElementById('perSpacePinnedFavorites'), false),
         syncTabGroups: getCheckboxValue(document.getElementById('syncTabGroups'), false),
+        showTabSearch: getCheckboxValue(document.getElementById('showTabSearch'), false),
         invertTabOrder: getCheckboxValue(document.getElementById('invertTabOrder'), true),
         closeEmptyNewTabs: getCheckboxValue(document.getElementById('closeEmptyNewTabs'), true),
         showAllOpenTabsInCollapsedFolders: getCheckboxValue(
@@ -159,6 +160,7 @@ async function restoreOptions() {
     setCheckboxValue(document.getElementById('autoArchiveEnabled'), settings.autoArchiveEnabled, false);
     setCheckboxValue(document.getElementById('perSpacePinnedFavorites'), settings.perSpacePinnedFavorites, false);
     setCheckboxValue(document.getElementById('syncTabGroups'), settings.syncTabGroups, false);
+    setCheckboxValue(document.getElementById('showTabSearch'), settings.showTabSearch, false);
     setCheckboxValue(document.getElementById('invertTabOrder'), settings.invertTabOrder, true);
     setCheckboxValue(document.getElementById('closeEmptyNewTabs'), settings.closeEmptyNewTabs, true);
     setCheckboxValue(
@@ -278,6 +280,7 @@ function setupAutoSave() {
     // Auto-save for checkboxes (most just save immediately)
     const checkboxIds = [
         'syncTabGroups',
+        'showTabSearch',
         'invertTabOrder',
         'closeEmptyNewTabs',
         'showAllOpenTabsInCollapsedFolders',

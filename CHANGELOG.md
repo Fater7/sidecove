@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Sidebar search setting.** The search box is hidden by default and can be enabled in Settings.
+
 - **Persistent top favorites.** Top favorites are saved as bookmarks and remain visible after their tabs close. Click an icon to open its page or return to its open tab.
 - **README picture in light mode.** The first picture in the README now shows Sidecove in light mode, so the two pictures show both looks. You will not notice this in the extension itself.
 - **README spaces picture in light and dark.** The second picture in the README now shows two spaces side by side, one in light mode and one in dark mode, on a soft blue-grey background. You will not notice this in the extension itself.

@@ -41,6 +41,9 @@ afterAll(async () => {
 
 test('favorites hidden by collapsing the Favorites section cannot be clicked or focused', async () => {
     await page.bringToFront();
+    await page.evaluate(() => chrome.storage.sync.set({ showTabSearch: true }));
+    await page.waitForFunction(() => !document.getElementById('tabSearch').hidden);
+
     const spots = await page.$$eval('.space.active [data-tab-type="pinned"] .bookmark-only', rows =>
         rows.map(row => {
             const r = row.getBoundingClientRect();

@@ -719,6 +719,11 @@ describe('multi-select and folders', () => {
 });
 
 describe('tab search', () => {
+    beforeAll(async () => {
+        await page.evaluate(() => chrome.storage.sync.set({ showTabSearch: true }));
+        await page.waitForFunction(() => !document.getElementById('tabSearch').hidden);
+    });
+
     const results = () =>
         page.$$eval('#tabSearchResults .search-result', rows =>
             rows.map(r => ({

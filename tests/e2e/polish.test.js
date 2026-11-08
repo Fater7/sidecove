@@ -61,6 +61,8 @@ test("a favorite's remove button shows when it has keyboard focus", async () => 
     // Let the refresh after loading settle so it does not replace the focused row.
     await sleep(1000);
     await page.bringToFront();
+    await page.evaluate(() => chrome.storage.sync.set({ showTabSearch: true }));
+    await page.waitForFunction(() => !document.getElementById('tabSearch').hidden);
     await page.focus('#tabSearchInput');
     let focused = false;
     for (let i = 0; i < 20 && !focused; i++) {

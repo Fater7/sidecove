@@ -1,3 +1,4 @@
+import { updateTabSearchVisibility } from './features/tab-search/visibility.js';
 import { spaceForActivation } from '../shared/space-membership.js';
 import { createPinnedFavorites } from './features/pinned-favorites/pinned-favorites.js';
 import { assignFavoriteOwner, saveFavorite } from './features/pinned-favorites/favorite-bookmarks.js';
@@ -384,6 +385,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             applySpaceSwitcherStyle(changes.spaceSwitcherStyle.newValue);
         }
 
+        if (areaName === 'sync' && changes.showTabSearch) {
+            updateTabSearchVisibility(changes.showTabSearch.newValue, clearTabSearch);
+        }
+
         if (areaName === 'sync' && changes.showAllOpenTabsInCollapsedFolders) {
             showAllOpenTabsInCollapsedFolders = Boolean(changes.showAllOpenTabsInCollapsedFolders.newValue);
             syncCollapsedFoldersInActiveSpace();
@@ -459,7 +464,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Ctrl+1 to Ctrl+9 and Ctrl+Shift+[ or ] switch spaces while the panel has focus.
     document.addEventListener('keydown', event => {
         // Cmd/Ctrl+F searches tabs, since the side panel has no find bar of its own.
-        if (event.code === 'KeyF' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+        if (
+            !document.getElementById('tabSearch').hidden &&
+            event.code === 'KeyF' &&
+            (event.metaKey || event.ctrlKey) &&
+            !event.altKey &&
+            !event.shiftKey
+        ) {
             event.preventDefault();
             tabSearchInput.focus();
             tabSearchInput.select();
@@ -620,6 +631,7 @@ async function adoptStoredSpaces(next, { render = true } = {}) {
 
 async function initSidebar() {
     const settings = await Utils.getSettings();
+    updateTabSearchVisibility(settings.showTabSearch, clearTabSearch);
     defaultSpaceName = settings.defaultSpaceName || 'Home';
     showAllOpenTabsInCollapsedFolders = Boolean(settings.showAllOpenTabsInCollapsedFolders);
     applySpaceSwitcherStyle(settings.spaceSwitcherStyle);
