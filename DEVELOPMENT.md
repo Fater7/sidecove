@@ -35,7 +35,7 @@ node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e/sidebar-s
 当前用户配置中的 FaterSide 是加载自本仓库 `dist/` 的解压扩展。上次确认的扩展 ID 是 `bcjgkicdlgagoabhophenhomhfpdlkgk`；实际操作前先以 `chrome://extensions/` 的详情页为准。
 
 1. 构建到 `dist/` 并运行 `npm run verify:dist`。
-2. 可静默重载时重载已安装的 FaterSide；否则告知用户在 `chrome://extensions/` 中重新加载。构建完成不代表 Chrome 已加载新代码。
+2. 自行重载已安装的 FaterSide；不能静默重载时在 `chrome://extensions/` 中操作。构建完成不代表 Chrome 已加载新代码。
 3. 由用户体验侧栏。不要卸载扩展或改用其他目录；保留用户已有标签页、数据和 `⌘S` 侧栏快捷键。
 
 仅修改仓库文档无需重载扩展。Chrome 商店中的 Sidecove 属于上游产品；自用版从本仓库构建，未经用户要求不执行商店发布流程。
