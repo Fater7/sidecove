@@ -21,7 +21,7 @@ afterAll(async () => {
 
 test('a favorite survives closing and reopening its tab and can be explicitly removed', async () => {
     const bookmarkId = await page.evaluate(async url => {
-        const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+        const [root] = (await chrome.bookmarks.search({ title: 'FaterSide' })).filter(node => !node.url);
         return (await chrome.bookmarks.create({ parentId: root.id, title: 'Persistent favorite', url })).id;
     }, url);
     const favorite = `#pinnedFavicons [data-bookmark-id="${bookmarkId}"]`;

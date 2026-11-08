@@ -404,7 +404,7 @@ describe('moving things between spaces', () => {
 
     test('a favorite dropped on a space remains available in every space when shared', async () => {
         const bookmarkId = await page.evaluate(async url => {
-            const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+            const [root] = (await chrome.bookmarks.search({ title: 'FaterSide' })).filter(node => !node.url);
             return (await chrome.bookmarks.create({ parentId: root.id, title: 'Shared favorite', url })).id;
         }, `${base}/pinned-chip`);
         const favicon = `#pinnedFavicons .pinned-favicon[data-bookmark-id="${bookmarkId}"]`;

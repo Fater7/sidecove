@@ -343,9 +343,9 @@ describe('Space Management', () => {
                     {
                         type: 'confirm',
                         message:
-                            'Delete "Unreadable Space"? Its bookmark folder could not be read. The bookmark folder is no longer inside the Sidecove folder.'
+                            'Delete "Unreadable Space"? Its bookmark folder could not be read. The bookmark folder is no longer inside the FaterSide folder.'
                     },
-                    { type: 'alert', message: 'The bookmark folder is no longer inside the Sidecove folder.' }
+                    { type: 'alert', message: 'The bookmark folder is no longer inside the FaterSide folder.' }
                 ]);
                 const remaining = await getSidebarSpaces(sidebarPage);
                 expect(remaining.find(s => s.name === 'Unreadable Space')).toBeDefined();
@@ -978,7 +978,7 @@ describe('Space Management', () => {
         const chipOrder = page => page.$$eval('.space-switcher button', els => els.map(el => el.textContent.trim()));
         const folderOrder = page =>
             page.evaluate(async () => {
-                const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+                const [root] = (await chrome.bookmarks.search({ title: 'FaterSide' })).filter(node => !node.url);
                 return (await chrome.bookmarks.getChildren(root.id)).filter(node => !node.url).map(node => node.title);
             });
         const waitForOrder = (page, expected) =>
@@ -987,7 +987,7 @@ describe('Space Management', () => {
                     const chips = [...document.querySelectorAll('.space-switcher button')].map(el =>
                         el.textContent.trim()
                     );
-                    const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+                    const [root] = (await chrome.bookmarks.search({ title: 'FaterSide' })).filter(node => !node.url);
                     const folders = (await chrome.bookmarks.getChildren(root.id))
                         .filter(node => !node.url)
                         .map(node => node.title);
@@ -1059,7 +1059,7 @@ describe('Space Management', () => {
 
                 logTestStep('Moving the last folder to the top in bookmarks...');
                 const moved = await sidebarPage.evaluate(async () => {
-                    const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+                    const [root] = (await chrome.bookmarks.search({ title: 'FaterSide' })).filter(node => !node.url);
                     const folder = (await chrome.bookmarks.getChildren(root.id)).filter(node => !node.url).at(-1);
                     await chrome.bookmarks.move(folder.id, { parentId: root.id, index: 0 });
                     return folder.title;
@@ -1109,7 +1109,7 @@ describe('Space Management', () => {
                 logTestStep('✓ Chip drag left the relocated folder where the user put it');
 
                 await sidebarPage.evaluate(async id => {
-                    const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+                    const [root] = (await chrome.bookmarks.search({ title: 'FaterSide' })).filter(node => !node.url);
                     await chrome.bookmarks.move(id, { parentId: root.id });
                 }, folderId);
             } catch (error) {
@@ -1373,7 +1373,7 @@ describe('Space Management', () => {
             // The sidebar adopts new root folders on its next refresh, so pick the folder before that runs.
             const { folderId, inactive } = await sidebarPage.evaluate(
                 async ({ name, selector }) => {
-                    const root = (await chrome.bookmarks.search({ title: 'Sidecove' })).find(node => !node.url);
+                    const root = (await chrome.bookmarks.search({ title: 'FaterSide' })).find(node => !node.url);
                     const folder = await chrome.bookmarks.create({ parentId: root.id, title: name });
                     document.querySelector(selector).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true }));
                     let item;

@@ -7,7 +7,7 @@ export async function getSpaceBookmarkFolder(space) {
     if (!folder || folder.url) throw new Error('The bookmark folder for this space is unavailable.');
     const root = (await chrome.bookmarks.search({ title: ROOT_FOLDER_TITLE })).find(node => !node.url);
     if (!root || String(folder.parentId) !== String(root.id)) {
-        throw new Error('The bookmark folder is no longer inside the Sidecove folder.');
+        throw new Error('The bookmark folder is no longer inside the FaterSide folder.');
     }
     return folder;
 }

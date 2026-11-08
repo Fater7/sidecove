@@ -89,7 +89,7 @@ describe('Options Page', () => {
                     const h1 = document.querySelector('.options-title');
                     return h1 ? h1.textContent.trim() : null;
                 });
-                expect(heading).toBe('Sidecove Settings');
+                expect(heading).toBe('FaterSide Settings');
 
                 logTestStep('Options page loaded successfully');
             } catch (error) {

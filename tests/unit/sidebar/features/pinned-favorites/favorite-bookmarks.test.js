@@ -12,7 +12,7 @@ test('favorites are stored as bookmarks independently of tabs', async () => {
     let nextId = 1;
     globalThis.chrome = {
         bookmarks: {
-            search: async () => [{ id: 'root', title: 'Sidecove' }],
+            search: async () => [{ id: 'root', title: 'FaterSide' }],
             getChildren: async () => children.slice(),
             create: async item => {
                 const node = { ...item, id: String(nextId++) };

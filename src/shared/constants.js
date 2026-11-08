@@ -6,7 +6,7 @@
  */
 
 // Title of the bookmark folder that holds every space; it is a data key, not just a label
-export const ROOT_FOLDER_TITLE = 'Sidecove';
+export const ROOT_FOLDER_TITLE = 'FaterSide';
 
 // CSS class names used throughout the application
 export const CSS_CLASSES = {

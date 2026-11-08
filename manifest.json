@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Sidecove (Fater7)",
+  "name": "FaterSide",
   "version": "1.3.0",
   "description": "Spaces, pinned tabs and favourites in Chrome's side panel, for people moving from Arc. Optional auto-archive. Free, no tracking.",
   "permissions": [

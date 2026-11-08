@@ -6,8 +6,8 @@ import { BookmarkUtils } from '../../../src/shared/bookmark-utils.js';
 import { readBookmarkSpaces } from '../../../src/onboarding/onboarding-bookmarks.js';
 import { getSpaceBookmarkFolder } from '../../../src/sidebar/space-bookmarks.js';
 
-// A bookmark tree holding a root folder another extension left behind, and optionally a Sidecove root.
-// Only the exact Sidecove title is ever adopted, whatever the other folder is called.
+// A bookmark tree holding a root folder another extension left behind, and optionally a FaterSide root.
+// Only the exact FaterSide title is ever adopted, whatever the other folder is called.
 function mock({ sidecove = false } = {}) {
     const nodes = [
         { id: '0', title: '' },
@@ -17,7 +17,7 @@ function mock({ sidecove = false } = {}) {
     ];
     if (sidecove)
         nodes.push(
-            { id: 'sidecove', parentId: '2', title: 'Sidecove' },
+            { id: 'sidecove', parentId: '2', title: 'FaterSide' },
             { id: 'sidecove-space', parentId: 'sidecove', title: 'Home' }
         );
     const writes = [];
@@ -49,18 +49,18 @@ function mock({ sidecove = false } = {}) {
     return { writes };
 }
 
-test('the root bookmark folder is titled Sidecove', () => {
-    assert.equal(ROOT_FOLDER_TITLE, 'Sidecove');
+test('the root bookmark folder is titled FaterSide', () => {
+    assert.equal(ROOT_FOLDER_TITLE, 'FaterSide');
 });
 
-test('a fresh install creates a Sidecove folder and leaves a folder from another extension untouched', async () => {
+test('a fresh install creates a FaterSide folder and leaves a folder from another extension untouched', async () => {
     const { writes } = mock();
     const folder = await LocalStorage.getOrCreateSidecoveFolder();
-    assert.equal(folder.title, 'Sidecove');
-    assert.deepEqual(writes, [['create', { title: 'Sidecove' }]]);
+    assert.equal(folder.title, 'FaterSide');
+    assert.deepEqual(writes, [['create', { title: 'FaterSide' }]]);
 });
 
-test('an existing Sidecove folder is reused without writes', async () => {
+test('an existing FaterSide folder is reused without writes', async () => {
     const { writes } = mock({ sidecove: true });
     assert.equal((await LocalStorage.getOrCreateSidecoveFolder()).id, 'sidecove');
     assert.equal((await BookmarkUtils.findSidecoveFolder()).id, 'sidecove');
@@ -71,10 +71,10 @@ test('lookups never adopt a folder from another extension', async () => {
     mock();
     assert.equal(await BookmarkUtils.findSidecoveFolder(), null);
     assert.deepEqual(await readBookmarkSpaces(), { folderId: null, names: [] });
-    await assert.rejects(getSpaceBookmarkFolder({ bookmarkFolderId: 'upstream-space' }), /Sidecove folder/);
+    await assert.rejects(getSpaceBookmarkFolder({ bookmarkFolderId: 'upstream-space' }), /FaterSide folder/);
 });
 
-test('setup reads spaces from the Sidecove folder only', async () => {
+test('setup reads spaces from the FaterSide folder only', async () => {
     mock({ sidecove: true });
     assert.deepEqual(await readBookmarkSpaces(), { folderId: 'sidecove', names: ['Home'] });
     assert.equal((await getSpaceBookmarkFolder({ bookmarkFolderId: 'sidecove-space' })).id, 'sidecove-space');

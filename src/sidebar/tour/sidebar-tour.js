@@ -11,7 +11,7 @@ export async function initSidebarTour() {
     const panel = document.createElement('section');
     panel.id = 'sidecove-tour';
     panel.hidden = true;
-    panel.setAttribute('aria-label', 'Sidecove guided tour');
+    panel.setAttribute('aria-label', 'FaterSide guided tour');
     panel.innerHTML = `<div class="coach-heading"><span id="coach-progress"></span><button id="coach-skip" type="button">Skip tour</button></div>
         <div id="coach-content" aria-live="polite"><h2 id="coach-title"></h2><p id="coach-copy"></p><p id="coach-feedback" role="status"></p></div>
         <button id="coach-retry" type="button" hidden>Add practice tab</button><div class="coach-navigation"><button id="coach-back" type="button">Back</button><button id="coach-next" type="button">Next tip</button></div>`;
@@ -147,7 +147,7 @@ export async function initSidebarTour() {
         el('coach-copy').textContent = step.tip;
         el('coach-feedback').textContent = '';
         el('coach-retry').hidden = true;
-        el('coach-next').textContent = state.step === TOUR_STEPS.length - 1 ? 'Start using Sidecove' : 'Next tip';
+        el('coach-next').textContent = state.step === TOUR_STEPS.length - 1 ? 'Start using FaterSide' : 'Next tip';
         // Resolve contextual copy before fading in, then keep it stable during motion.
         locate();
         if (animate && !reducedMotion.matches && !document.hidden) {

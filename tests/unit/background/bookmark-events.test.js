@@ -22,7 +22,7 @@ test('bookmark listeners ignore unrelated edits and coalesce Sidecove subtree ch
         onImportEnded: event()
     };
     const nodes = {
-        root: { id: 'root', title: 'Sidecove' },
+        root: { id: 'root', title: 'FaterSide' },
         space: { id: 'space', parentId: 'root' },
         favorite: { id: 'favorite', parentId: 'space', url: 'https://one.test/' },
         other: { id: 'other', parentId: 'outside' }

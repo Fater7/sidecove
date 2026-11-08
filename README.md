@@ -1,3 +1,5 @@
+> FaterSide is Fater7’s personal fork of Sidecove. The installed extension uses the `FaterSide` bookmark root and is built locally from `fater7/main`. The store and release links below refer to the original Sidecove project, not this fork.
+
 <p align="center">
   <img src="public/assets/icon.png" alt="Sidecove logo" width="96" height="96">
   <br>
@@ -47,7 +49,7 @@ To update, unzip the new release over the same folder and click the reload icon 
 
 To build and load from source instead, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-An unpacked copy is a separate extension from the store version: Chrome gives it its own id, so it has its own settings and its own record of which tabs belong to which space. Both read and write the same `Sidecove` bookmarks folder in your profile. This fork stores top favorites as bookmarks, whereas the store version displays Chrome-pinned tabs there. Running both at once is not recommended; turn one off in `chrome://extensions/` first.
+An unpacked copy is a separate extension from the store version: Chrome gives it its own id, so it has its own settings and its own record of which tabs belong to which space. FaterSide uses its own `FaterSide` bookmarks folder; the store version uses `Sidecove`. This fork stores top favorites as bookmarks, whereas the store version displays Chrome-pinned tabs there. Running both at once is not recommended; turn one off in `chrome://extensions/` first.
 
 ## Issues and Feature Requests
 
@@ -81,7 +83,7 @@ We use GitHub Issues to track bugs and feature requests. Before creating a new i
    - Potential implementation ideas (optional)
    - Mock-ups or examples (if applicable)
 
-Sidecove only adds features that work with the permissions it has today. It can see your tabs' titles and addresses, use the side panel, save settings, keep spaces and favorites in a Sidecove bookmarks folder, run a timer for auto-archive, show tab icons and copy a tab's address. It has no access to websites, no content scripts and no network access. A request that needs more than this cannot be done and will be closed as not possible.
+Sidecove only adds features that work with the permissions it has today. It can see your tabs' titles and addresses, use the side panel, save settings, keep spaces and favorites in a FaterSide bookmarks folder, run a timer for auto-archive, show tab icons and copy a tab's address. It has no access to websites, no content scripts and no network access. A request that needs more than this cannot be done and will be closed as not possible.
 
 ## Contributing
 
@@ -138,7 +140,7 @@ restored tabs and recover space order. Identical URLs in different spaces are
 matched in saved occurrence order because Chrome does not expose a durable tab ID.
 Space definitions and bookmarks remain available even when tabs are not restored.
 
-Pinned tabs are backed by bookmarks in **Sidecove → space name**, regardless of the
+Pinned tabs are backed by bookmarks in **FaterSide → space name**, regardless of the
 tab-group sync setting. Startup and opening the sidebar discover existing space
 folders, including folders synced by Chrome, and display their bookmarks as saved
 pins. Pinning adds a bookmark; unpinning removes its saved bookmark even if the tab
@@ -148,7 +150,7 @@ open becomes that favorite's tab again. **Move to Space** on a pinned tab, open 
 moves its bookmark into the target space's folder and keeps it pinned. Nested bookmark folders remain nested in the space.
 Deleting a space also deletes its bookmark folder and all bookmarks inside it.
 
-Space chips follow the order of the space folders under **Sidecove**: moving a folder
+Space chips follow the order of the space folders under **FaterSide**: moving a folder
 in Chrome's bookmark manager reorders the chips, and dragging a chip moves its
 folder. On the first load after updating, space order follows the bookmark folder
 order, so a chip order set by dragging before this change resets once; dragging

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **FaterSide.** The personal fork and its bookmark root are now named FaterSide.
+- **Folder arrows.** Folder rows no longer display a hover arrow; clicking a folder still expands or collapses it.
+
 - **Sidebar search setting.** The search box is hidden by default and can be enabled in Settings.
 
 - **Persistent top favorites.** Top favorites are saved as bookmarks and remain visible after their tabs close. Click an icon to open its page or return to its open tab.

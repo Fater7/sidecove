@@ -15,7 +15,7 @@
 - 运行仓库要求的单元测试、构建和与改动相关的验证；不因追求历史版本兼容而扩大测试范围。
   本机需要 Node 24；如果 `node` 不在 PATH，可使用
   `PATH="$HOME/.nvm/versions/node/v22.16.0/bin:$PATH" npx --yes --package=node@24 -c '<命令>'`。
-- Favorites 顶部图标是 `Sidecove` 根目录下的书签，空间是同一目录下的子文件夹。图标不依赖打开的
+- Favorites 顶部图标是 `FaterSide` 根目录下的书签，空间是同一目录下的子文件夹。图标不依赖打开的
   标签页；右键删除收藏，拖入侧栏顶部添加。空间归属保存在扩展本地设置中。
 
 Sidecove is a Manifest V3 Chrome extension that shows tabs in Chrome's side panel, grouped
@@ -63,7 +63,7 @@ Vite, no framework, no runtime dependencies.
 - **Space model:** the service worker is the only writer (`shared/space-store.js`). Panels send
   patches through `shared/space-client.js` and never write `spaces` to storage themselves.
 - **Durable data:** favourites and spaces live under the bookmark folder titled `ROOT_FOLDER_TITLE`
-  (`Sidecove`). Auto-archive must never close a protected favourite.
+  (`FaterSide`). Auto-archive must never close a protected favourite.
 - **Stored keys and IDs:** preserve storage keys, bookmark folder names, extension page URLs and
   `manifest.json` commands where practical. Renaming a command resets shortcuts. Do not add an
   upgrade migration solely for this personal fork; the user can reconfigure it when needed.

@@ -669,25 +669,6 @@ h3 {
     position: relative;
 }
 
-.folder-toggle::before {
-    content: '';
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid transparent;
-    transition: border-top-color 0.2s;
-}
-
-.folder-header:hover .folder-toggle::before,
-.folder-toggle:focus-visible::before {
-    border-top: 6px solid #1010107d;
-}
-
-.folder-toggle.collapsed {
-    transform: rotate(-90deg);
-}
-
 .folder-content {
     padding: 0px 12px;
     display: flex;
@@ -2689,11 +2670,6 @@ h3 {
 
     .folder-toggle {
         color: rgba(255, 255, 255, 0.8);
-    }
-
-    .folder-header:hover .folder-toggle::before,
-    .folder-toggle:focus-visible::before {
-        border-top-color: rgba(255, 255, 255, 0.6);
     }
 
     .tab-placeholder {

@@ -44,7 +44,7 @@ function mock() {
             async search() {
                 return [
                     { id: 'url-twin', url: 'https://sidecove.example' },
-                    { id: 'root', title: 'Sidecove' }
+                    { id: 'root', title: 'FaterSide' }
                 ];
             },
             async get(id) {

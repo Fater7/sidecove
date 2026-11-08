@@ -86,7 +86,7 @@ test("a favorite's remove button shows when it has keyboard focus", async () => 
 
 test('a favorite that wraps onto a new row keeps the same width as the others (upstream #42)', async () => {
     const ids = await page.evaluate(async () => {
-        const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
+        const [root] = (await chrome.bookmarks.search({ title: 'FaterSide' })).filter(node => !node.url);
         const created = [];
         for (let i = 0; i < 7; i++)
             created.push(

@@ -31,3 +31,26 @@ test('search is hidden by default and follows the setting', async () => {
     await options.reload();
     expect(await options.$eval('#showTabSearch', input => input.checked)).toBe(false);
 });
+
+test('folders expand and collapse without a hover arrow', async () => {
+    const folderId = await sidebar.evaluate(async () => {
+        const [root] = await chrome.bookmarks.search({ title: 'FaterSide' });
+        const [space] = (await chrome.bookmarks.getChildren(root.id)).filter(node => !node.url);
+        const folder = await chrome.bookmarks.create({ parentId: space.id, title: 'Folder' });
+        await chrome.bookmarks.create({ parentId: folder.id, title: 'Example', url: 'https://example.com/' });
+        return folder.id;
+    });
+    const row = `.folder[data-bookmark-id="${folderId}"]`;
+    await sidebar.waitForSelector(row);
+    expect(await sidebar.$eval(`${row} .folder-toggle`, button => getComputedStyle(button, '::before').content)).toBe(
+        'none'
+    );
+    const wasCollapsed = await sidebar.$eval(row, folder => folder.classList.contains('collapsed'));
+    await sidebar.$eval(`${row} .folder-header`, header => header.click());
+    await sidebar.waitForFunction(
+        (selector, previous) => document.querySelector(selector).classList.contains('collapsed') !== previous,
+        {},
+        row,
+        wasCollapsed
+    );
+});
