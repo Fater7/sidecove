@@ -4159,17 +4159,20 @@ function handleTabUpdate(tabId, changeInfo, tab) {
         if (tabElement) {
             if (changeInfo.audible !== undefined || changeInfo.mutedInfo) updateAudioIndicator(tabElement, tab);
 
-            // Update Favicon if URL changed
+            // Keep using Chrome's higher-resolution cached favicon after tab updates.
             if (changeInfo.url || changeInfo.favIconUrl) {
                 const img = tabElement.querySelector('img');
                 if (img) {
-                    img.src = tab.favIconUrl;
                     img.onerror = () => {
-                        img.src = tab.favIconUrl;
+                        img.src = tab.favIconUrl || '/assets/default_icon.png';
                         img.onerror = () => {
                             img.src = '/assets/default_icon.png';
-                        }; // Fallback favicon
+                        };
                     };
+                    img.src = Utils.getFaviconUrl(
+                        tab.url || tab.pendingUrl,
+                        tabElement.classList.contains('pinned-favicon') ? '96' : '32'
+                    );
                 }
             }
 
@@ -4251,7 +4254,6 @@ function handleTabUpdate(tabId, changeInfo, tab) {
                 faviconElement = tabElement.querySelector('img');
             }
             if (changeInfo.url && faviconElement) {
-                faviconElement.src = Utils.getFaviconUrl(changeInfo.url);
                 // Do NOT auto-overwrite the pinned bookmark URL on navigation.
                 // Instead, make favicon look actionable and show the Arc-like label only on favicon hover.
                 tabElement.dataset.url = tab.url;

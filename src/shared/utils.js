@@ -105,7 +105,7 @@ const Utils = {
     },
 
     // Helper function to fetch favicon
-    getFaviconUrl: function (u, size = '16') {
+    getFaviconUrl: function (u, size = '32') {
         const url = new URL(chrome.runtime.getURL('/_favicon/'));
         url.searchParams.set('pageUrl', u);
         url.searchParams.set('size', size);
