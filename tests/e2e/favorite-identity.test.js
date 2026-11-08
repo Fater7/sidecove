@@ -320,7 +320,7 @@ test('native pinning does not hide its same-URL favorite', async () => {
     await page.evaluate(id => chrome.tabs.update(id, { pinned: true }), fixture.a);
     await page.reload();
     await page.waitForSelector(`.space.active .bookmark-only[data-bookmark-id="${binding.bookmarkId}"]`);
-    await page.waitForSelector(`#pinnedFavicons [data-tab-id="${fixture.a}"]`);
+    expect(await page.$(`#pinnedFavicons [data-tab-id="${fixture.a}"]`)).toBeNull();
 });
 
 test('closed URL twins render once each and a temporary reorder preserves every bookmark', async () => {
@@ -563,32 +563,6 @@ test('service-worker ordering matches real Chrome move semantics and rejects par
     expect(ordered.second.success).toBe(true);
     expect(ordered.live).toEqual([ordered.ids[1], ordered.ids[2], ordered.ids[0]]);
     expect(ordered.partial.success).toBe(false);
-});
-
-test('reordering native pinned favicons updates Chrome and survives reload', async () => {
-    const another = await page.evaluate(
-        async url => (await chrome.tabs.create({ url, pinned: true, active: false })).id,
-        url
-    );
-    await page.waitForSelector(`#pinnedFavicons [data-tab-id="${another}"]`);
-    await page.$eval(`#pinnedFavicons [data-tab-id="${fixture.a}"]`, el => {
-        el.classList.add('dragging');
-        el.parentElement.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, clientX: 100000 }));
-        el.classList.remove('dragging');
-    });
-    await page.waitForFunction(
-        async id => {
-            const tabs = await chrome.tabs.query({ pinned: true, currentWindow: true });
-            return tabs.sort((a, b) => a.index - b.index).at(-1)?.id === id;
-        },
-        { polling: 100 },
-        fixture.a
-    );
-    await page.reload();
-    await page.waitForSelector(`#pinnedFavicons [data-tab-id="${another}"]`);
-    expect(await page.$$eval('#pinnedFavicons .pinned-favicon', els => Number(els.at(-1).dataset.tabId))).toBe(
-        fixture.a
-    );
 });
 
 test('new folders have a bookmark identity before naming and remain usable after Escape', async () => {

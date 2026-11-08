@@ -37,7 +37,7 @@ SPACES
 - Switch to a space with no open tab and a New Tab opens in it. Close the tab you are on and you stay in the same space, unless it is an empty New Tab, where Chrome picks the next tab.
 
 FAVOURITES AND PINNED TABS
-- Favourites are the row of site icons at the top. They are Chrome's own pinned tabs and follow you into every space, or, if you turn on "Separate favorites for each space" in Settings, each space shows only its own.
+- Favourites are the row of site icons at the top. They are saved as bookmarks and stay visible when their tabs are closed. They follow you into every space, or, if you turn on "Separate favorites for each space" in Settings, each space shows only its own.
 - Pinned tabs belong to a single space. Each space keeps its own pinned tabs and nested folders (up to four levels deep).
 - An open pinned tab shows a minus button that closes the tab and keeps the pin; a closed one opens in its own new tab.
 - Hold one tab over a pinned tab for a moment and drop it to make a folder of the two.

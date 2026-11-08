@@ -84,10 +84,18 @@ test("a favorite's remove button shows when it has keyboard focus", async () => 
 
 test('a favorite that wraps onto a new row keeps the same width as the others (upstream #42)', async () => {
     const ids = await page.evaluate(async () => {
-        // Seven tiles always leave a partial last row at this width.
+        const [root] = (await chrome.bookmarks.search({ title: 'Sidecove' })).filter(node => !node.url);
         const created = [];
         for (let i = 0; i < 7; i++)
-            created.push((await chrome.tabs.create({ url: `about:blank#tile-${i}`, pinned: true, active: false })).id);
+            created.push(
+                (
+                    await chrome.bookmarks.create({
+                        parentId: root.id,
+                        title: `Tile ${i}`,
+                        url: `https://example.com/tile-${i}`
+                    })
+                ).id
+            );
         return created;
     });
     await page.waitForFunction(
@@ -105,7 +113,9 @@ test('a favorite that wraps onto a new row keeps the same width as the others (u
     expect(rows.length).toBeGreaterThan(1);
     const widths = tiles.map(tile => tile.width);
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
-    await page.evaluate(ids => chrome.tabs.remove(ids), ids);
+    await page.evaluate(async ids => {
+        for (const id of ids) await chrome.bookmarks.remove(id);
+    }, ids);
 });
 
 test('the welcome screens send feedback to the Sidecove issues page and show no email address', async () => {

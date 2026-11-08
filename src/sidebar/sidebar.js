@@ -1,5 +1,6 @@
 import { spaceForActivation } from '../shared/space-membership.js';
 import { createPinnedFavorites } from './features/pinned-favorites/pinned-favorites.js';
+import { assignFavoriteOwner, saveFavorite } from './features/pinned-favorites/favorite-bookmarks.js';
 import {
     getSpaceBookmarkById,
     getSpaceBookmarkFolder,
@@ -274,12 +275,7 @@ const updatePinnedFavicons = createPinnedFavorites({
     getWindowId: () => currentWindow.id,
     getActiveSpaceId: () => activeSpaceId,
     clearAllActiveStates,
-    clearSelection,
-    getDragAfterElementFavicon,
-    getDropPosition,
-    showDropIndicator,
-    hideAllDropIndicators,
-    calculatePinnedTabIndex
+    clearSelection
 });
 
 // Utility function to activate a pinned tab by URL (reuses existing bookmark opening logic)
@@ -408,9 +404,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         closeFocus.trackTab(tab);
         handleTabUpdate(tabId, changeInfo, tab);
-        if (tab.pinned || changeInfo.pinned !== undefined) updatePinnedFavicons(); // Update favicons when a tab is pinned/unpinned
+        if (changeInfo.url || changeInfo.pinned !== undefined) updatePinnedFavicons();
     });
     chrome.tabs.onRemoved.addListener(handleTabRemove);
+    chrome.tabs.onRemoved.addListener(() => updatePinnedFavicons());
     chrome.tabs.onRemoved.addListener((_tabId, removeInfo) => spaceTabShower.noteTabRemoved(removeInfo));
     const refreshWindowTabs = async (_tabId, info) => {
         if (info.newWindowId === currentWindow?.id || info.oldWindowId === currentWindow?.id) {
@@ -1227,19 +1224,21 @@ async function updateSpaceSwitcher() {
     // Inactive space from bookmarks
     const sidecoveFolder = await LocalStorage.getOrCreateSidecoveFolder();
     const spaceFolders = await chrome.bookmarks.getChildren(sidecoveFolder.id);
-    spaceFolders.forEach(spaceFolder => {
-        if (spaces.find(space => space.name == spaceFolder.title)) {
-            return;
-        } else {
-            const button = document.createElement('button');
-            fillSpaceChip(button, spaceFolder.title, null);
-            button.addEventListener('click', async () => {
-                const newTab = await ChromeHelper.createNewTab();
-                await createSpaceFromInactive(spaceFolder.title, newTab);
-            });
-            spaceSwitcher.appendChild(button);
-        }
-    });
+    spaceFolders
+        .filter(spaceFolder => !spaceFolder.url)
+        .forEach(spaceFolder => {
+            if (spaces.find(space => space.name == spaceFolder.title)) {
+                return;
+            } else {
+                const button = document.createElement('button');
+                fillSpaceChip(button, spaceFolder.title, null);
+                button.addEventListener('click', async () => {
+                    const newTab = await ChromeHelper.createNewTab();
+                    await createSpaceFromInactive(spaceFolder.title, newTab);
+                });
+                spaceSwitcher.appendChild(button);
+            }
+        });
 
     // const spaceFolder = spaceFolders.find(f => f.title === space.name);
     updateSpaceChipDensity();
@@ -1354,7 +1353,7 @@ async function moveItemsToSpace(items, spaceId) {
 
 async function moveItemToSpace(item, target) {
     if (item.kind === 'pinned') {
-        await adoptStoredSpaces(await spaceRequest('assignPin', { tabId: item.tabId, spaceId: target.id }));
+        await assignFavoriteOwner(item.bookmarkId, target.bookmarkFolderId);
         await updatePinnedFavicons();
         return;
     }
@@ -1429,36 +1428,6 @@ function getDragAfterElementTabs(container, y) {
         selector: TAB_ROW_SELECTOR,
         placeholderSelector: ':scope > .tab-placeholder'
     });
-}
-
-function getDragAfterElementFavicon(container, x) {
-    return getDragAfterElement(container, x, {
-        axis: 'x',
-        selector: '.pinned-favicon:not(.dragging)',
-        placeholderSelector: '.pinned-placeholder-container'
-    });
-}
-
-function calculatePinnedTabIndex(afterElement, position, pinnedFavicons) {
-    if (!afterElement) {
-        // If no target element, append to the end
-        return pinnedFavicons.querySelectorAll('.pinned-favicon').length;
-    }
-
-    const pinnedElements = Array.from(pinnedFavicons.querySelectorAll('.pinned-favicon'));
-    const afterIndex = pinnedElements.indexOf(afterElement);
-
-    if (afterIndex === -1) {
-        // Fallback: append to end if element not found
-        return pinnedElements.length;
-    }
-
-    if (position === 'left') {
-        return afterIndex; // Insert before the target element
-    } else {
-        // position === 'right'
-        return afterIndex + 1; // Insert after the target element
-    }
 }
 
 // Helper function to set up drag event listeners for tab elements
@@ -2373,6 +2342,8 @@ async function setupDragAndDrop(pinnedContainer, tempContainer) {
             const mergeTarget = armedMergeTarget;
             setMergeTarget(null);
             mergeHover = null;
+            // Top favorites have their own bookmark and are not Chrome-pinned tabs.
+            if (draggingElement?.classList.contains('pinned-favicon')) return;
             if (draggingElement && mergeTarget?.isConnected) {
                 // Dropping a tab onto a favorite makes a folder holding both.
                 await createFolderFromItems(
@@ -3516,7 +3487,9 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
                       live => Boolean(live.mutedInfo?.muted),
                       () => false
                   ),
-            LocalStorage.getOrCreateSidecoveFolder().then(folder => chrome.bookmarks.getChildren(folder.id))
+            LocalStorage.getOrCreateSidecoveFolder()
+                .then(folder => chrome.bookmarks.getChildren(folder.id))
+                .then(nodes => nodes.filter(node => !node.url))
         ]);
         showTabContextMenu(
             e.pageX,
@@ -3533,7 +3506,12 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
             createSpaceFromInactive,
             replaceBookmarkUrlWithCurrentUrl,
             moveFavoriteToSpace,
-            { muted, onRename }
+            {
+                muted,
+                onRename,
+                onAddFavorite: item =>
+                    saveFavorite(item, spaces.find(space => space.id === activeSpaceId)?.bookmarkFolderId)
+            }
         );
     });
 
@@ -4328,7 +4306,7 @@ async function handleTabRemove(tabId) {
     editorSessions.dispose('tab', tabId);
     await Utils.removePinnedTabState(tabId);
     // Get tab element before removing it
-    const tabElement = document.querySelector(`[data-tab-id="${tabId}"]`);
+    const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
     if (!tabElement) return;
     Logger.log('tabElement', tabElement);
 

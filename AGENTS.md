@@ -1,5 +1,23 @@
 # Sidecove: rules for contributors and coding agents
 
+## Fater7 自用维护
+
+- 仓库是 `git@github.com:Fater7/sidecove.git` 的自用 fork，长期维护分支为 `p/limuyang.fater7/main`。
+  默认在该分支完成用户请求；完成后直接提交并推送到同名远端分支，无需重复询问。本机 Git 钩子要求个人前缀。
+- 用户需要实际使用结果。涉及扩展代码的改动完成并验证后，构建 `dist/`，在用户当前 Chrome
+  配置中直接安装或重新加载该目录，并打开侧栏确认结果。保留其他标签页和用户数据；首次安装时
+  通过浏览器界面处理权限提示。Chrome 商店版和解压版是不同扩展；自用版安装验证完成后，卸载
+  商店版，只保留自用版，避免两份扩展同时读写 Sidecove 数据。
+- 本地目录：`/Users/bytedance/SProjects/sidecove`；Chrome 加载的固定目录是该仓库下的
+  `dist/`。保持路径稳定，以便后续重新构建和在扩展管理页重新加载。不要直接改 Chrome 商店版文件。
+- 自用开发以当前需求为准，不为旧版状态编写自动迁移或额外兼容逻辑；需要时用户可以重新设置。
+  不要为此删除现有书签或其他用户数据。
+- 运行仓库要求的单元测试、构建和与改动相关的验证；不因追求历史版本兼容而扩大测试范围。
+  本机需要 Node 24；如果 `node` 不在 PATH，可使用
+  `PATH="$HOME/.nvm/versions/node/v22.16.0/bin:$PATH" npx --yes --package=node@24 -c '<命令>'`。
+- Favorites 顶部图标是 `Sidecove` 根目录下的书签，空间是同一目录下的子文件夹。图标不依赖打开的
+  标签页；右键删除收藏，拖入侧栏顶部添加。空间归属保存在扩展本地设置中。
+
 Sidecove is a Manifest V3 Chrome extension that shows tabs in Chrome's side panel, grouped
 into spaces with pinned tabs and favourites. It is published on the Chrome Web Store and its
 permissions were approved in a security review. Plain JavaScript (ES modules), built with
@@ -46,9 +64,9 @@ Vite, no framework, no runtime dependencies.
   patches through `shared/space-client.js` and never write `spaces` to storage themselves.
 - **Durable data:** favourites and spaces live under the bookmark folder titled `ROOT_FOLDER_TITLE`
   (`Sidecove`). Auto-archive must never close a protected favourite.
-- **Stored keys and IDs are contracts:** storage keys, bookmark folder names, extension page URLs
-  and the command names in `manifest.json` survive upgrades. Renaming a command resets users'
-  shortcuts; renaming a key or URL loses data. Change one only with a migration and an upgrade test.
+- **Stored keys and IDs:** preserve storage keys, bookmark folder names, extension page URLs and
+  `manifest.json` commands where practical. Renaming a command resets shortcuts. Do not add an
+  upgrade migration solely for this personal fork; the user can reconfigure it when needed.
 - **Messages:** in `chrome.runtime.onMessage`, return `true` or a Promise only for messages you
   handle. Never return a Promise for unrelated messages.
 - **Clipboard:** copy through the offscreen document, never by injecting into pages.
@@ -60,8 +78,7 @@ Vite, no framework, no runtime dependencies.
   files as text.
 - A change users can see gets an end-to-end test in `tests/e2e/`. Shared helpers go in
   `tests/e2e/helpers/`.
-- `tests/e2e/upgrade.test.js` upgrades from the latest release. Keep it green; it is the proof that
-  user data survives.
+- Run the upgrade test when an upgrade path is explicitly part of the task.
 - Refactors change no assertions. If a refactor needs a test change beyond import paths, it is
   not a refactor; split it out.
 - `tests/manual/` holds the checklists to run on the built zip before a release.
