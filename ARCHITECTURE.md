@@ -37,6 +37,6 @@ FaterSide 是 Sidecove 的自用 fork。用户操作 Chrome 原生侧栏中的�
 
 ## 验证与浏览器边界
 
-`tests/unit/` 对应源码模块；`tests/e2e/` 使用独立 Chrome 实例和构建后的 `dist/`，公共启动逻辑在 `tests/e2e/helpers/extension-helper.js`。测试通过只证明对应场景；加载到用户日常 Chrome 后还要检查实际侧栏。
+`tests/unit/` 对应源码模块；`tests/e2e/` 使用独立 Chrome 实例和构建后的 `dist/`，公共启动逻辑在 `tests/e2e/helpers/extension-helper.js`。测试通过只证明对应场景；日常 Chrome 中的实际体验由用户验证。
 
 原生侧栏的标题栏和浏览器工具栏的侧栏按钮由 Chrome 绘制，扩展只控制侧栏内容。Chrome 当前 Side Panel API 没有隐藏这些控件的接口；相关需求暂不处理。具体能力应以当前 Chrome 版本及官方 API 为准。

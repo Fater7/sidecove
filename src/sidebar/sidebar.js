@@ -3492,6 +3492,7 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
     // --- Context Menu ---
     tabElement.addEventListener('contextmenu', async e => {
         e.preventDefault();
+        e.stopPropagation();
         if (selection.size > 1 && selection.has(itemKey(tabElement))) {
             showBulkMenu(e.clientX, e.clientY, selectedItems());
             return;

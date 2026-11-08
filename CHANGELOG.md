@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Folder context menus.** Right-clicking a tab inside a folder opens only the tab menu.
 - **Sidebar favicons.** Tab and bookmark icons use higher-resolution images for sharper display.
 - **Space switching.** Delayed tab activation events no longer undo a newer space switch.
 - **FaterSide.** The personal fork and its bookmark root are now named FaterSide.

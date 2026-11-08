@@ -137,6 +137,26 @@ afterAll(async () => {
 
 beforeEach(seedFavorites);
 
+test('right-clicking a nested bookmark opens its menu without opening folder menus', async () => {
+    await page.click(row('Deep one'), { button: 'right' });
+    await page.waitForSelector('#tab-context-menu');
+    await new Promise(resolve => setTimeout(resolve, 300));
+    expect(await page.$$eval('body > .context-menu', menus => menus.map(menu => menu.id))).toEqual([
+        'tab-context-menu'
+    ]);
+
+    await page.mouse.click(5, 5);
+    await page.click(`${folder('Nested')} > .folder-header`, { button: 'right' });
+    await page.waitForFunction(
+        () =>
+            [...document.querySelectorAll('body > .context-menu')].some(menu =>
+                menu.textContent.includes('Delete Folder')
+            ),
+        { polling: 100 }
+    );
+    expect(await page.$$eval('body > .context-menu', menus => menus.length)).toBe(1);
+});
+
 describe('drop indicator', () => {
     test('between top-level rows: one line at the top-level indent, no folder highlighted', async () => {
         await hover(row('Top three'), row('Top two'), { y: 0.15 });

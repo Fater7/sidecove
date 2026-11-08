@@ -28,16 +28,15 @@ npm run verify:dist
 node --experimental-vm-modules node_modules/jest/bin/jest.js tests/e2e/sidebar-settings.test.js --runInBand --forceExit
 ```
 
-测试入口和其他脚本在 `package.json`。UI 修改验证对应行为；简单改动不必运行完整 E2E。未运行的验证或无法模拟的手感在交付时说明。
+测试入口和其他脚本在 `package.json`。按改动选择必要的自动化测试，简单改动不必运行完整 E2E。用户自行体验界面，默认不使用 Computer Use 操作日常 Chrome 验证；未运行的验证在交付时说明。
 
 ## 更新日常 Chrome
 
 当前用户配置中的 FaterSide 是加载自本仓库 `dist/` 的解压扩展。上次确认的扩展 ID 是 `bcjgkicdlgagoabhophenhomhfpdlkgk`；实际操作前先以 `chrome://extensions/` 的详情页为准。
 
 1. 构建到 `dist/` 并运行 `npm run verify:dist`。
-2. 打开 `chrome://extensions/?id=bcjgkicdlgagoabhophenhomhfpdlkgk`，确认名称、ID 和加载目录，点击扩展的“重新加载”。不要卸载扩展或改用其他目录。
-3. 重新打开侧栏，检查本次改动和用户原有 Space、Favorites；快捷键 `⌘S` 是用户在 `chrome://extensions/shortcuts` 中设置的侧栏开关。保留用户已有标签页和数据。重载可能打开引导页；仅关闭本次操作产生的引导页。
-4. 真实触摸板手势或动画手感由用户体验；模拟滚轮事件、自动化断言和截图只能证明各自覆盖的部分。
+2. 可静默重载时重载已安装的 FaterSide；否则告知用户在 `chrome://extensions/` 中重新加载。构建完成不代表 Chrome 已加载新代码。
+3. 由用户体验侧栏。不要卸载扩展或改用其他目录；保留用户已有标签页、数据和 `⌘S` 侧栏快捷键。
 
 仅修改仓库文档无需重载扩展。Chrome 商店中的 Sidecove 属于上游产品；自用版从本仓库构建，未经用户要求不执行商店发布流程。
 
