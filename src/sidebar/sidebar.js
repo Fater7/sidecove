@@ -119,6 +119,9 @@ let currentWindow = null;
 let defaultSpaceName = 'Home';
 let showAllOpenTabsInCollapsedFolders = false; // default Arc behavior is false (active-only)
 let activeChromeTabId = null;
+let spaceSwitchVersion = 0;
+let tabActivationVersion = 0;
+let pendingSpaceSwitch = null;
 // Arc-like behavior: track which tabs have been active in each collapsed folder.
 // These tabs stay visible until user manually opens/closes the folder.
 // WeakMap<HTMLElement (folder), Set<number (tabId)>>
@@ -1562,21 +1565,27 @@ function clearFolderOpenTimer() {
 async function setActiveSpace(spaceId, updateTab = true, { initial = false, openIfEmpty = false } = {}) {
     const space = spaces.find(s => s.id === spaceId);
     if (!space) return;
-    if (activeSpaceId && activeSpaceId !== spaceId) {
-        previousSpaceId = activeSpaceId;
-        const activeEditor = document.activeElement?.closest?.(`[data-space-id="${activeSpaceId}"]`);
-        if (activeEditor) document.activeElement.blur();
-        editorSessions.dispose('folder-pending', activeSpaceId);
-    }
-    if (activeSpaceId !== spaceId) clearSelection();
-    activeSpaceId = spaceId;
-    await pendingSpaceSaves;
-    await spaceRequest('activate', { windowId: currentWindow.id, spaceId, initial });
-    if (activeSpaceId !== spaceId) return;
-    await activateSpaceInDOM(spaceId, spaces, updateSpaceSwitcher);
-    await refreshActiveSpaceUI();
-    if (updateTab && activeSpaceId === spaceId) {
-        await spaceTabShower.show(space, { openIfEmpty });
+    const switchVersion = ++spaceSwitchVersion;
+    pendingSpaceSwitch = spaceId;
+    try {
+        if (activeSpaceId && activeSpaceId !== spaceId) {
+            previousSpaceId = activeSpaceId;
+            const activeEditor = document.activeElement?.closest?.(`[data-space-id="${activeSpaceId}"]`);
+            if (activeEditor) document.activeElement.blur();
+            editorSessions.dispose('folder-pending', activeSpaceId);
+        }
+        if (activeSpaceId !== spaceId) clearSelection();
+        activeSpaceId = spaceId;
+        await pendingSpaceSaves;
+        await spaceRequest('activate', { windowId: currentWindow.id, spaceId, initial });
+        if (activeSpaceId !== spaceId) return;
+        await activateSpaceInDOM(spaceId, spaces, updateSpaceSwitcher);
+        await refreshActiveSpaceUI();
+        if (updateTab && activeSpaceId === spaceId) {
+            await spaceTabShower.show(space, { openIfEmpty });
+        }
+    } finally {
+        if (spaceSwitchVersion === switchVersion) pendingSpaceSwitch = null;
     }
 }
 
@@ -4382,6 +4391,10 @@ function handleTabActivated(activeInfo) {
         Logger.log('Skipping tab creation handler - space is being created');
         return;
     }
+    if (activeInfo.windowId !== currentWindow?.id) return;
+    const activationVersion = ++tabActivationVersion;
+    const switchVersion = spaceSwitchVersion;
+    const isCurrent = () => activationVersion === tabActivationVersion && switchVersion === spaceSwitchVersion;
     chrome.windows.getCurrent({ populate: false }, async currentWindow => {
         if (activeInfo.windowId !== currentWindow.id) {
             Logger.log('New tab is in a different window, ignoring...');
@@ -4391,19 +4404,24 @@ function handleTabActivated(activeInfo) {
         Logger.log('Tab activated:', activeInfo);
         // Find which space contains this tab
         const { perSpacePinnedFavorites = false } = await chrome.storage.sync.get('perSpacePinnedFavorites');
+        if (!isCurrent()) return;
         const spaceWithTab = spaceForActivation(spaces, activeInfo.tabId, perSpacePinnedFavorites);
+        if (pendingSpaceSwitch && spaceWithTab && spaceWithTab.id !== pendingSpaceSwitch) return;
         Logger.log('found space', spaceWithTab);
 
         if (
             spaceWithTab &&
             (await closeFocus.stayAfterClose({
                 activatedTabId: activeInfo.tabId,
-                activatedSpaceId: spaceWithTab.id
+                activatedSpaceId: spaceWithTab.id,
+                isCurrent,
+                isSwitchCurrent: () => switchVersion === spaceSwitchVersion
             }))
         ) {
             Logger.log('Active tab closed; staying in the current space');
             return;
         }
+        if (!isCurrent()) return;
         activeChromeTabId = activeInfo.tabId;
 
         if (spaceWithTab) {

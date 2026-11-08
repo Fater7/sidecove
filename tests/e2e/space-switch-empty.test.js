@@ -205,4 +205,28 @@ describe('switching to a space with no open tab', () => {
         );
         expect(after).toBe(before + 1);
     });
+
+    test('a delayed activation from the previous space cannot undo a space switch', async () => {
+        await clickChip('Two');
+        await until(activeTab, tab => tab.id === twoLast, 'Two should show its last tab');
+        await sidebar.evaluate(() => {
+            const original = chrome.storage.sync.get.bind(chrome.storage.sync);
+            window.delayedActivation = false;
+            chrome.storage.sync.get = async keys => {
+                if (keys === 'perSpacePinnedFavorites' && !window.delayedActivation) {
+                    window.delayedActivation = true;
+                    await new Promise(resolve => (window.releaseActivation = resolve));
+                }
+                return original(keys);
+            };
+        });
+        await sidebar.evaluate(id => chrome.tabs.update(id, { active: true }), homeTab);
+        await sidebar.waitForFunction(() => window.delayedActivation);
+        await clickChip('Two');
+        await until(activeTab, tab => tab.id === twoLast, 'Two should show its last tab');
+        await sidebar.evaluate(() => window.releaseActivation());
+        await wait(1000);
+        expect(await sidebar.$eval('.space.active .space-name', input => input.value)).toBe('Two');
+        expect((await activeTab()).id).toBe(twoLast);
+    });
 });

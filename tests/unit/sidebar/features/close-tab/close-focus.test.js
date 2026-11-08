@@ -113,6 +113,30 @@ test('a tab of another space opened on purpose still switches to that space', as
     assert.equal(active(), 10);
 });
 
+test('a newer space switch cancels a pending close recovery', async () => {
+    let release;
+    let current = true;
+    const calls = [];
+    const focus = createCloseFocus({
+        getActiveSpaceId: () => 'A',
+        getActiveTabId: () => 2,
+        setActiveTabId: id => calls.push(['record', id]),
+        ownerOf: () => 'A',
+        displayedOrder: () => [2, 3],
+        tabExists: async () => false,
+        openTabIds: () => new Promise(resolve => (release = resolve)),
+        activateTab: async id => calls.push(['activate', id]),
+        openNewTab: async () => calls.push(['new tab']),
+        restoreAfterPick: async () => calls.push(['restore'])
+    });
+    const result = focus.stayAfterClose({ activatedTabId: 10, activatedSpaceId: 'B', isCurrent: () => current });
+    await new Promise(resolve => setImmediate(resolve));
+    current = false;
+    release([3, 10]);
+    assert.equal(await result, false);
+    assert.deepEqual(calls, []);
+});
+
 test('a tab moved to another window is not a close', async () => {
     const calls = [];
     const moved = createCloseFocus({

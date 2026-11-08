@@ -41,13 +41,15 @@ export function createCloseFocus({
     // Closing several tabs fires several activations; handle them one at a time.
     let queue = Promise.resolve();
 
-    async function handle({ activatedTabId, activatedSpaceId }) {
+    async function handle({ activatedTabId, activatedSpaceId, isCurrent = () => true, isSwitchCurrent = isCurrent }) {
+        if (!isCurrent()) return false;
         const spaceId = getActiveSpaceId();
         const previousTabId = getActiveTabId();
         if (previousTabId == null || !spaceId) return false;
         if (emptyNewTabs.has(previousTabId)) {
             // Settled here, so also forget the New Tabs that have closed since.
             const open = new Set(await openTabIds());
+            if (!isCurrent()) return false;
             for (const id of emptyNewTabs) if (!open.has(id)) emptyNewTabs.delete(id);
             return false;
         }
@@ -58,6 +60,7 @@ export function createCloseFocus({
         const order = note ? note.order : displayedOrder(spaceId);
         if (!order.includes(previousTabId)) return false;
         const open = new Set(await openTabIds());
+        if (!isCurrent()) return false;
         const target = pickTabAfterClose(order, previousTabId, id => open.has(id) && !closed.has(id));
         const crossedSpaces = activatedSpaceId !== spaceId;
         // Chrome already picked the tab we would: nothing to change.
@@ -69,6 +72,7 @@ export function createCloseFocus({
             Logger.warn('Could not stay in the space after a tab closed:', error);
             return false;
         }
+        if (!isSwitchCurrent()) return false;
         setActiveTabId(target ?? null);
         if (crossedSpaces) await restoreAfterPick(activatedSpaceId, activatedTabId, visited.get(activatedSpaceId));
         return true;
@@ -97,7 +101,7 @@ export function createCloseFocus({
             const run = queue.then(async () => {
                 const stayed = await handle(activation);
                 // Settled here so the next queued activation sees where the user now is.
-                if (!stayed) {
+                if (!stayed && (activation.isCurrent?.() ?? true)) {
                     setActiveTabId(activation.activatedTabId);
                     visited.set(activation.activatedSpaceId, activation.activatedTabId);
                 }
