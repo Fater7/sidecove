@@ -399,7 +399,7 @@ export function showTabContextMenu(
     }
 
     // Archive Tab (Only for active tabs)
-    if (!isBookmarkOnly) {
+    if (!isBookmarkOnly && document.body.classList.contains('archive-and-clear-enabled')) {
         const archiveOption = document.createElement('div');
         archiveOption.className = 'context-menu-item';
         archiveOption.textContent = 'Archive Tab';

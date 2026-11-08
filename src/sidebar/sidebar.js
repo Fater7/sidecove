@@ -393,6 +393,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             updateTabSearchVisibility(changes.showTabSearch.newValue, clearTabSearch);
         }
 
+        if (areaName === 'sync' && changes.archiveAndClearEnabled) {
+            updateArchiveAndClearVisibility(changes.archiveAndClearEnabled.newValue);
+        }
+
         if (areaName === 'sync' && changes.showAllOpenTabsInCollapsedFolders) {
             showAllOpenTabsInCollapsedFolders = Boolean(changes.showAllOpenTabsInCollapsedFolders.newValue);
             syncCollapsedFoldersInActiveSpace();
@@ -615,8 +619,19 @@ async function adoptStoredSpaces(next, { render = true } = {}) {
     return { needsRender, completed: true };
 }
 
+function updateArchiveAndClearVisibility(enabled) {
+    document.body.classList.toggle('archive-and-clear-enabled', Boolean(enabled));
+    if (!enabled) {
+        document.querySelectorAll('.archived-tabs-popup.visible').forEach(popup => {
+            popup.classList.remove('visible');
+            popup.closest('.space').querySelector('.space-content').classList.remove('hidden');
+        });
+    }
+}
+
 async function initSidebar() {
     const settings = await Utils.getSettings();
+    updateArchiveAndClearVisibility(settings.archiveAndClearEnabled);
     updateTabSearchVisibility(settings.showTabSearch, clearTabSearch);
     defaultSpaceName = settings.defaultSpaceName || 'Home';
     showAllOpenTabsInCollapsedFolders = Boolean(settings.showAllOpenTabsInCollapsedFolders);
@@ -3343,7 +3358,9 @@ async function createTabElement(tab, isPinned = false, isBookmarkOnly = false) {
                         return;
                     }
                     // Check if tab is in archive and restore it
-                    const archivedTabs = await Utils.getArchivedTabs();
+                    const archivedTabs = document.body.classList.contains('archive-and-clear-enabled')
+                        ? await Utils.getArchivedTabs()
+                        : [];
                     const archivedTab = !isPinned && archivedTabs.find(t => t.url === tabUrl);
 
                     let targetSpaceId = activeSpaceId;
@@ -3926,7 +3943,9 @@ function showBulkMenu(x, y, elements) {
                 }))
         },
         'separator',
-        ...(temporary ? [{ label: `Archive ${plural(temporary)}`, action: () => archiveItems(items) }] : []),
+        ...(temporary && document.body.classList.contains('archive-and-clear-enabled')
+            ? [{ label: `Archive ${plural(temporary)}`, action: () => archiveItems(items) }]
+            : []),
         ...(live ? [{ label: `Close ${plural(live)}`, action: () => closeItems(items) }] : [])
     ]);
 }

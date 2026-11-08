@@ -79,15 +79,25 @@ function updateAutoArchiveIdleMinutesVisibility(forceEnabled) {
     const input = document.getElementById('autoArchiveIdleMinutes');
     if (!container || !checkbox || !input) return;
 
-    const isEnabled = forceEnabled !== undefined ? Boolean(forceEnabled) : Boolean(checkbox.checked);
+    const featureEnabled = document.getElementById('archiveAndClearEnabled').checked;
+    const isEnabled = featureEnabled && (forceEnabled !== undefined ? Boolean(forceEnabled) : Boolean(checkbox.checked));
+    document.getElementById('autoArchiveEnabledContainer').style.display = featureEnabled ? '' : 'none';
     container.style.display = isEnabled ? '' : 'none';
     input.disabled = !isEnabled;
+}
+
+function updateDuplicateTabsVisibility() {
+    const enabled = document.getElementById('mergeDuplicateTabsEnabled').checked;
+    document.getElementById('mergeDuplicateTabsIdleMinutesContainer').style.display = enabled ? '' : 'none';
+    document.getElementById('mergeDuplicateTabsIdleMinutes').disabled = !enabled;
 }
 
 // Function to save options to chrome.storage
 async function saveOptions() {
     const defaultSpaceNameSelect = document.getElementById('defaultSpaceName');
     const autoArchiveIdleMinutesInput = document.getElementById('autoArchiveIdleMinutes');
+    const mergeDuplicateTabsIdleMinutesInput = document.getElementById('mergeDuplicateTabsIdleMinutes');
+    if (!mergeDuplicateTabsIdleMinutesInput.disabled && !mergeDuplicateTabsIdleMinutesInput.reportValidity()) return;
     if (
         autoArchiveIdleMinutesInput &&
         !autoArchiveIdleMinutesInput.disabled &&
@@ -104,6 +114,9 @@ async function saveOptions() {
 
     const settings = {
         defaultSpaceName: defaultSpaceNameSelect?.value || 'Home',
+        archiveAndClearEnabled: getCheckboxValue(document.getElementById('archiveAndClearEnabled'), false),
+        mergeDuplicateTabsEnabled: getCheckboxValue(document.getElementById('mergeDuplicateTabsEnabled'), true),
+        mergeDuplicateTabsIdleMinutes: parseInt(mergeDuplicateTabsIdleMinutesInput.value, 10) || 120,
         autoArchiveEnabled: getCheckboxValue(document.getElementById('autoArchiveEnabled'), false),
         autoArchiveIdleMinutes: parseInt(autoArchiveIdleMinutesInput?.value, 10) || 360,
         perSpacePinnedFavorites: getCheckboxValue(document.getElementById('perSpacePinnedFavorites'), false),
@@ -157,6 +170,10 @@ async function restoreOptions() {
     await populateSpacesDropdown(settings.defaultSpaceName);
 
     // Restore checkbox values
+    setCheckboxValue(document.getElementById('archiveAndClearEnabled'), settings.archiveAndClearEnabled, false);
+    setCheckboxValue(document.getElementById('mergeDuplicateTabsEnabled'), settings.mergeDuplicateTabsEnabled, true);
+    document.getElementById('mergeDuplicateTabsIdleMinutes').value = settings.mergeDuplicateTabsIdleMinutes;
+    updateDuplicateTabsVisibility();
     setCheckboxValue(document.getElementById('autoArchiveEnabled'), settings.autoArchiveEnabled, false);
     setCheckboxValue(document.getElementById('perSpacePinnedFavorites'), settings.perSpacePinnedFavorites, false);
     setCheckboxValue(document.getElementById('syncTabGroups'), settings.syncTabGroups, false);
@@ -289,6 +306,15 @@ function setupAutoSave() {
     checkboxIds.forEach(id => addListenerIfExists(id, 'change', saveOptions));
 
     // Auto-archive checkbox needs special handling to update visibility
+    addListenerIfExists('archiveAndClearEnabled', 'change', () => {
+        updateAutoArchiveIdleMinutesVisibility();
+        saveOptions();
+    });
+    addListenerIfExists('mergeDuplicateTabsEnabled', 'change', () => {
+        updateDuplicateTabsVisibility();
+        saveOptions();
+    });
+    addListenerIfExists('mergeDuplicateTabsIdleMinutes', 'input', debouncedSave);
     const autoArchiveCheckbox = addListenerIfExists('autoArchiveEnabled', 'change', () => {
         updateAutoArchiveIdleMinutesVisibility(autoArchiveCheckbox?.checked);
         saveOptions();

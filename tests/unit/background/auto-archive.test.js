@@ -50,7 +50,7 @@ function startBackground() {
         storage: {
             local: area(local),
             session: area(session),
-            sync: area({ autoArchiveEnabled: true }),
+            sync: area({ archiveAndClearEnabled: true, autoArchiveEnabled: true }),
             onChanged: event()
         },
         tabs: {
@@ -94,6 +94,14 @@ test('a tab idle past the threshold in the same session is archived', async () =
     await startBackground()();
     assert.deepEqual(removed, [1]);
     assert.equal(local.archivedTabs[0].url, 'https://one.test/');
+});
+test('turning off archive and Clear prevents automatic archiving even if auto-archive was enabled', async () => {
+    local.tabLastActivity = { 1: Date.now() - threshold - 1000 };
+    const fire = startBackground();
+    await chrome.storage.sync.set({ archiveAndClearEnabled: false });
+    await fire();
+    assert.deepEqual(removed, []);
+    assert.equal(local.archivedTabs, undefined);
 });
 test('a previous-session record for a reused tab id does not archive it at the first check after restart', async () => {
     session.spaceSession = false;

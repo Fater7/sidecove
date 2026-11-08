@@ -36,7 +36,7 @@ const loaded = (async () => {
         },
         sidePanel: { setPanelBehavior: async () => {} },
         commands: { onCommand: event },
-        alarms: { onAlarm: event, clear: async () => {}, create: async () => {} },
+        alarms: { onAlarm: event, get: async () => null, clear: async () => {}, create: async () => {} },
         storage: {
             onChanged: event,
             local: area({ spaceModelVersion: 2, spaces: [home] }),

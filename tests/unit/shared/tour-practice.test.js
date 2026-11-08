@@ -26,7 +26,7 @@ const state = step => ({ version: 3, status: 'active', runId: 'test', windowId: 
 test('practice tabs are inactive, per lesson, and reused across panel reopen', async () => {
     const { created } = mockTabs();
     for (const step of TOUR_STEPS.map((step, index) =>
-        ['pins', 'folders', 'favorites', 'archive'].includes(step.id) ? index : -1
+        ['pins', 'folders', 'favorites'].includes(step.id) ? index : -1
     ).filter(index => index >= 0)) {
         const before = state(step),
             message = { runId: 'test', step };
@@ -34,9 +34,9 @@ test('practice tabs are inactive, per lesson, and reused across panel reopen', a
         const reopened = await preparePractice(first, message, TOUR_STEPS);
         assert.deepEqual(first.practiceTabs, reopened.practiceTabs);
     }
-    assert.equal(created.length, 4);
+    assert.equal(created.length, 3);
     assert.ok(created.every(tab => tab.active === false && tab.windowId === 7));
-    assert.equal(new Set(created.map(tab => tab.url)).size, 4);
+    assert.equal(new Set(created.map(tab => tab.url)).size, 3);
 });
 test('late practice requests cannot create tabs after skip or a step change', async () => {
     const { created } = mockTabs();

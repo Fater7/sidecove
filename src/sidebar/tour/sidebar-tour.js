@@ -212,7 +212,6 @@ export async function initSidebarTour() {
         event => {
             if (!active() || panel.contains(event.target)) return;
             const id = TOUR_STEPS[state.step].id;
-            if (id === 'archive' && event.target.closest('.sidebar-button')) achieved('Your archive is right here.');
             if (id === 'settings' && event.target.closest('.settings-btn'))
                 achieved('Settings opened. Make yourself at home.');
             schedule();

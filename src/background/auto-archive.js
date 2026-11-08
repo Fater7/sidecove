@@ -44,7 +44,7 @@ export function registerAutoArchive(spaceStore) {
     async function setupAutoArchiveAlarm() {
         try {
             const settings = await Utils.getSettings();
-            if (settings.autoArchiveEnabled && settings.autoArchiveIdleMinutes > 0) {
+            if (settings.archiveAndClearEnabled && settings.autoArchiveEnabled && settings.autoArchiveIdleMinutes > 0) {
                 // Create the alarm to fire periodically
                 // Note: Chrome alarms are not exact, they fire *at least* this often.
                 // Minimum period is 1 minute.
@@ -71,7 +71,7 @@ export function registerAutoArchive(spaceStore) {
     // --- Archiving Logic ---
     async function runAutoArchiveCheck() {
         const settings = await Utils.getSettings();
-        if (!settings.autoArchiveEnabled || settings.autoArchiveIdleMinutes <= 0) {
+        if (!settings.archiveAndClearEnabled || !settings.autoArchiveEnabled || settings.autoArchiveIdleMinutes <= 0) {
             return;
         }
 
@@ -190,7 +190,7 @@ export function registerAutoArchive(spaceStore) {
     // Listen for changes in storage (e.g., settings updated from options page)
     chrome.storage.onChanged.addListener((changes, areaName) => {
         // Check if any of the auto-archive settings changed
-        const settingsChanged = ['autoArchiveEnabled', 'autoArchiveIdleMinutes'].some(key => key in changes);
+        const settingsChanged = ['archiveAndClearEnabled', 'autoArchiveEnabled', 'autoArchiveIdleMinutes'].some(key => key in changes);
 
         if ((areaName === 'sync' || areaName === 'local') && settingsChanged) {
             setupAutoArchiveAlarm(); // Re-create or clear the alarm based on new settings

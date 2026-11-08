@@ -286,6 +286,11 @@ describe('Options Page', () => {
     // 3. Auto-Archive Settings
     // ---------------------------------------------------------------------------
     describe('Auto-Archive Settings', () => {
+        beforeEach(async () => {
+            if (!(await optionsPage.$eval('#archiveAndClearEnabled', input => input.checked))) {
+                await optionsPage.$eval('#archiveAndClearEnabled', input => input.click());
+            }
+        });
         test('should hide idle minutes input when auto-archive is disabled', async () => {
             try {
                 logTestStep('Checking idle minutes visibility when disabled...');

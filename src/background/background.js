@@ -55,6 +55,7 @@ import { openOnboardingIfDue } from './onboarding-lifecycle.js';
 import { RECENT_TAB_COMMAND, registerRecentTab } from './recent-tab.js';
 import { registerCloseEmptyNewTab } from './close-empty-new-tab.js';
 import { registerPendingClean } from './pending-clean.js';
+import { registerDuplicateTabMerge } from './duplicate-tab-merge.js';
 
 // Helper to handle async message responses with consistent error handling
 function handleAsyncMessage(handler, sendResponse, errorContext, defaultErrorData = {}) {
@@ -78,6 +79,7 @@ registerPendingClean({ spaceStore });
 
 // A new tab left empty closes when the user switches to another tab (a setting turns this off).
 registerCloseEmptyNewTab({ spaceStore });
+registerDuplicateTabMerge({ spaceStore });
 
 // Configure Chrome side panel behavior
 chrome.sidePanel

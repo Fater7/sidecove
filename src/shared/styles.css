@@ -765,6 +765,11 @@ h3 {
     /* margin-bottom: 8px; */
 }
 
+body:not(.archive-and-clear-enabled) .clean-tabs-btn,
+body:not(.archive-and-clear-enabled) .sidebar-button {
+    display: none;
+}
+
 .divider-line {
     flex-grow: 1;
     height: 1px;

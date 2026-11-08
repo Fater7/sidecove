@@ -440,6 +440,13 @@ test('New Tab sits under the divider, above the open tabs, once in each space', 
 // behaviour is covered under 'Clear' in arc-parity.test.js; this checks the look, the keyboard
 // and screen reader access, and that the label is readable on the space colour in both themes.
 describe('Clear on the divider', () => {
+    beforeAll(async () => {
+        await page.evaluate(() => chrome.storage.sync.set({ archiveAndClearEnabled: true }));
+        await page.waitForFunction(() => document.body.classList.contains('archive-and-clear-enabled'));
+    });
+    afterAll(async () => {
+        await page.evaluate(() => chrome.storage.sync.set({ archiveAndClearEnabled: false }));
+    });
     const readClear = () =>
         page.evaluate(() => {
             const space = document.querySelector('.space.active');

@@ -1,4 +1,4 @@
-export const PRACTICE_LESSONS = new Set(['pins', 'folders', 'favorites', 'archive']);
+export const PRACTICE_LESSONS = new Set(['pins', 'folders', 'favorites']);
 export function isPracticeUrl(url) {
     const base = globalThis.chrome?.runtime?.getURL?.('tutorial-practice.html');
     return Boolean(base && (url === base || url?.startsWith(`${base}#`)));

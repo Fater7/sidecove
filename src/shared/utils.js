@@ -136,6 +136,9 @@ const Utils = {
     getSettings: async function () {
         const defaultSettings = {
             defaultSpaceName: 'Home',
+            archiveAndClearEnabled: false,
+            mergeDuplicateTabsEnabled: true,
+            mergeDuplicateTabsIdleMinutes: 120,
             autoArchiveEnabled: false, // Default: disabled
             autoArchiveIdleMinutes: 360, // Default: 6 hours
             syncTabGroups: false,

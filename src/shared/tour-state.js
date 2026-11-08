@@ -46,20 +46,20 @@ export const TOUR_STEPS = [
     },
     {
         id: 'archive',
-        label: 'Archive',
-        title: 'A fresh space, a way back',
-        tip: 'Right-click “Practice: archive this tab” → Archive Tab. Then open the highlighted history button and click the entry to restore it.',
-        caption: 'Archive a tab for later, then bring it back with a click.',
-        detail: 'Manual archives remain accessible with auto-archiving off. Enable automatic cleanup in Settings and choose an inactivity interval; pinned tabs and tabs playing audio stay open. Clear, at the right end of the divider above New Tab, closes the open tabs in the current space.',
-        target: '.space .sidebar-button'
+        label: 'Optional controls',
+        title: 'Choose the controls you need',
+        tip: 'Open Options → Settings to enable Archive and Clear if you want them.',
+        caption: 'Archive and Clear are off by default.',
+        detail: 'The setting also controls automatic archiving.',
+        target: '.space .space-options'
     },
     {
         id: 'settings',
         label: 'Your preferences',
         title: 'Make FaterSide feel like you',
-        tip: 'Open the highlighted Options menu → Settings for colors, tab order, automatic cleanup, and Chrome group sync.',
+        tip: 'Open the highlighted Options menu → Settings for colors, tab order, and Chrome group sync.',
         caption: 'Your colors. Your shortcuts. Your way of keeping things organized.',
-        detail: 'Settings includes default space, tab order, collapsed-folder behavior, auto-archiving, custom colors, and Advanced debug logging. Optional Chrome group sync mirrors FaterSide’s spaces; FaterSide stays authoritative. Turning sync off leaves Chrome groups unchanged.',
+        detail: 'Settings includes default space, tab order, collapsed-folder behavior, custom colors, and Advanced debug logging. Optional Chrome group sync mirrors FaterSide’s spaces; FaterSide stays authoritative. Turning sync off leaves Chrome groups unchanged.',
         target: '.space .space-options'
     },
     {

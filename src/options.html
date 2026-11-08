@@ -29,7 +29,7 @@
 
         <section class="options-section" aria-labelledby="gettingStartedHeading">
             <h2 id="gettingStartedHeading" class="options-section-title">Getting started</h2>
-            <p class="options-description">Explore spaces, pinned tabs, folders, favorites, and archiving with highlights in your sidebar.</p>
+            <p class="options-description">Explore spaces, pinned tabs, folders, and favorites with highlights in your sidebar.</p>
             <a href="installation-onboarding.html?replay=1" target="_blank" rel="noopener" class="options-label">Replay the interactive guide</a>
         </section>
 
@@ -127,9 +127,40 @@
             </div>
         </section>
 
-        <section class="options-section" aria-labelledby="archiveHeading">
-            <h2 id="archiveHeading" class="options-section-title">Auto-archiving</h2>
+        <section class="options-section" aria-labelledby="duplicatesHeading">
+            <h2 id="duplicatesHeading" class="options-section-title">Duplicate tabs</h2>
             <div class="options-setting-item options-setting-toggle">
+                <div class="options-setting-copy">
+                    <label for="mergeDuplicateTabsEnabled" class="options-label">Automatically merge duplicate tabs</label>
+                    <p id="mergeDuplicateTabsDescription" class="options-description">Close inactive web or file duplicates with the same exact address in the same window and space. Active, pinned, favorite, and playing tabs stay open.</p>
+                </div>
+                <div class="toggle-switch-container">
+                    <input type="checkbox" id="mergeDuplicateTabsEnabled" class="ios-toggle" aria-describedby="mergeDuplicateTabsDescription">
+                    <label for="mergeDuplicateTabsEnabled" class="toggle-label" aria-hidden="true"></label>
+                </div>
+            </div>
+            <div class="options-setting-item options-setting-field options-dependent-setting" id="mergeDuplicateTabsIdleMinutesContainer" style="display: none;">
+                <div class="options-setting-copy">
+                    <label for="mergeDuplicateTabsIdleMinutes" class="options-label">Merge after inactivity</label>
+                    <p id="mergeDuplicateTabsIdleMinutesDescription" class="options-description">Minutes since the duplicate tab was last visited. Checks run periodically.</p>
+                </div>
+                <input type="number" id="mergeDuplicateTabsIdleMinutes" class="options-input" min="1" step="1" required aria-describedby="mergeDuplicateTabsIdleMinutesDescription" disabled>
+            </div>
+        </section>
+
+        <section class="options-section" aria-labelledby="archiveHeading">
+            <h2 id="archiveHeading" class="options-section-title">Archive and Clear</h2>
+            <div class="options-setting-item options-setting-toggle">
+                <div class="options-setting-copy">
+                    <label for="archiveAndClearEnabled" class="options-label">Enable archive and Clear</label>
+                    <p id="archiveAndClearDescription" class="options-description">Show archive and Clear controls. When off, tabs are not archived automatically.</p>
+                </div>
+                <div class="toggle-switch-container">
+                    <input type="checkbox" id="archiveAndClearEnabled" class="ios-toggle" aria-describedby="archiveAndClearDescription">
+                    <label for="archiveAndClearEnabled" class="toggle-label" aria-hidden="true"></label>
+                </div>
+            </div>
+            <div class="options-setting-item options-setting-toggle" id="autoArchiveEnabledContainer">
                 <div class="options-setting-copy">
                     <label for="autoArchiveEnabled" class="options-label">Enable auto-archiving</label>
                     <p id="autoArchiveEnabledDescription" class="options-description">Archive inactive tabs automatically. Pinned tabs and tabs playing audio stay open.</p>
