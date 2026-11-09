@@ -157,6 +157,46 @@ test('right-clicking a nested bookmark opens its menu without opening folder men
     expect(await page.$$eval('body > .context-menu', menus => menus.length)).toBe(1);
 });
 
+test('folder names are edited from the context menu, not by double-clicking', async () => {
+    const header = `${folder('Nested')} > .folder-header`;
+    await page.click(header, { clickCount: 2 });
+    expect(
+        await page.$eval(`${folder('Nested')} > .folder-header .folder-name`, el => getComputedStyle(el).display)
+    ).toBe('none');
+    await page.waitForFunction(
+        selector => {
+            const element = document.querySelector(selector);
+            if (!element) return false;
+            element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+            return true;
+        },
+        { polling: 100 },
+        header
+    );
+    await page.waitForFunction(() =>
+        [...document.querySelectorAll('.context-menu-item')].some(item => item.textContent === 'Rename Folder')
+    );
+    await page.evaluate(() =>
+        [...document.querySelectorAll('.context-menu-item')].find(item => item.textContent === 'Rename Folder').click()
+    );
+    await page.waitForFunction(() => document.activeElement?.classList.contains('folder-name'));
+    await page.keyboard.type('Nested renamed');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(
+        id => chrome.bookmarks.get(id).then(([node]) => node.title === 'Nested renamed'),
+        { polling: 100 },
+        ids.Nested
+    );
+    await page.reload();
+    await page.waitForFunction(
+        id =>
+            document.querySelector(`.folder[data-bookmark-id="${id}"] > .folder-header .folder-title`)?.textContent ===
+            'Nested renamed',
+        { polling: 100 },
+        ids.Nested
+    );
+});
+
 describe('drop indicator', () => {
     test('between top-level rows: one line at the top-level indent, no folder highlighted', async () => {
         await hover(row('Top three'), row('Top two'), { y: 0.15 });

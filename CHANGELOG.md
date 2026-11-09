@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Folder renaming.** Rename folders from their right-click menu; double-clicking no longer opens the name editor.
 - **Duplicate tabs.** Settings can automatically merge exact-address duplicates in the same window and space after a configurable period of inactivity. The setting is on by default, with an interval of two hours.
 - **Archive and Clear.** Both controls and automatic archiving are off by default and can be enabled together in Settings.
 - **Trackpad space switching.** A long swipe and its momentum now switch spaces only once.

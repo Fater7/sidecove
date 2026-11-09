@@ -2606,8 +2606,6 @@ async function createNewFolder(spaceElement, parentFolderElement = null) {
     const folderHeader = folderElement.querySelector('.folder-header');
     const folderTitle = folderElement.querySelector('.folder-title');
     const folderNameInput = folderElement.querySelector('.folder-name');
-    const folderIcon = folderElement.querySelector('.folder-icon');
-    const folderToggle = folderElement.querySelector('.folder-toggle');
     const folderContent = folderElement.querySelector('.folder-content');
 
     // Save the initial expanded state once the bookmark ID is assigned.
@@ -2645,11 +2643,7 @@ async function createNewFolder(spaceElement, parentFolderElement = null) {
     editorSessions.setOwner(folderEditSession, 'folder', createdFolderId);
     let savedFolderName = 'Untitled';
 
-    // Add double-click functionality for folder name editing (for new folders)
-    folderHeader.addEventListener('dblclick', e => {
-        // Prevent dblclick on folder toggle button from triggering rename
-        if (e.target === folderToggle) return;
-
+    folderElement.addEventListener('rename-folder', () => {
         folderTitle.style.display = 'none';
         folderNameInput.style.display = 'inline-block';
         folderNameInput.readOnly = false;
@@ -2760,16 +2754,14 @@ async function renderSpaceTabs(space, pinnedContainer, tempContainer) {
                         const folderElement = newFolder.querySelector('.folder');
                         folderElement.dataset.bookmarkId = item.id;
                         const folderHeader = folderElement.querySelector('.folder-header');
-                        const folderIcon = folderElement.querySelector('.folder-icon');
                         const folderTitle = folderElement.querySelector('.folder-title');
                         const folderNameInput = folderElement.querySelector('.folder-name');
                         const folderContent = folderElement.querySelector('.folder-content');
-                        const folderToggle = folderElement.querySelector('.folder-toggle');
                         const placeHolderElement = folderElement.querySelector('.tab-placeholder');
                         let folderEditSession = null;
                         // Set up folder toggle functionality
                         // Add context menu for folder
-                        setupFolderContextMenu(folderElement, space, item);
+                        setupFolderContextMenu(folderElement, space);
                         setupFolderDragHandlers(folderElement);
 
                         folderHeader.addEventListener('click', () => {
@@ -2778,11 +2770,7 @@ async function renderSpaceTabs(space, pinnedContainer, tempContainer) {
                             setFolderCollapsed(folderElement, !folderElement.classList.contains('collapsed'));
                         });
 
-                        // Add double-click functionality for folder name editing
-                        folderHeader.addEventListener('dblclick', e => {
-                            // Prevent dblclick on folder toggle button from triggering rename
-                            if (e.target === folderToggle) return;
-
+                        folderElement.addEventListener('rename-folder', () => {
                             folderTitle.style.display = 'none';
                             folderNameInput.style.display = 'inline-block';
                             folderNameInput.readOnly = false;
@@ -3874,8 +3862,8 @@ async function createFolderFromItems(items, anchor = items[0]) {
     });
     if (folder) {
         getSpaceElement(activeSpaceId)
-            ?.querySelector(`.folder[data-bookmark-id="${folder.id}"] > .folder-header`)
-            ?.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+            ?.querySelector(`.folder[data-bookmark-id="${folder.id}"]`)
+            ?.dispatchEvent(new Event('rename-folder'));
     }
 }
 
@@ -4715,7 +4703,7 @@ async function movToPrevTabInSpace(tabId, sourceSpace) {
     return Utils.movToPrevTabInSpace(tabId, sourceSpace);
 }
 // Reusable function to set up folder context menu
-function setupFolderContextMenu(folderElement, space, item = null) {
+function setupFolderContextMenu(folderElement, space) {
     folderElement.addEventListener('contextmenu', async e => {
         e.preventDefault();
         e.stopPropagation();
@@ -4728,6 +4716,15 @@ function setupFolderContextMenu(folderElement, space, item = null) {
         const spaceElement = folderElement.closest('.space');
         const spaceFolder = await getSpaceBookmarkFolder(space);
         const folderId = folderElement.dataset.bookmarkId;
+        const renameOption = document.createElement('div');
+        renameOption.classList.add('context-menu-item');
+        renameOption.textContent = 'Rename Folder';
+        renameOption.addEventListener('click', () => {
+            contextMenu.remove();
+            folderElement.dispatchEvent(new Event('rename-folder'));
+        });
+        contextMenu.appendChild(renameOption);
+
         if (folderId && (await canCreateFolder(spaceFolder.id, folderId))) {
             const newFolderOption = document.createElement('div');
             newFolderOption.classList.add('context-menu-item');
