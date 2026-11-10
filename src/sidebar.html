@@ -85,13 +85,8 @@
         <div class="space">
             <div class="space-header">
                 <div class="space-name-container">
-                    <button class="space-toggle-chevron" title="Toggle pinned section">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="chevron-icon">
-                            <path d="M7 10l5 5 5-5z" />
-                        </svg>
-                    </button>
-                    <button class="space-icon-button" type="button" title="Choose an icon for this space" aria-label="Choose an icon for this space"></button>
-                    <input type="text" class="space-name" placeholder="Space Name">
+                    <button class="space-name-toggle" type="button" aria-expanded="true"></button>
+                    <input type="text" class="space-name" aria-label="Space name" hidden>
                 </div>
                 <button id="archive-button" class="sidebar-button" title="Archived Tabs">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" class="svg-icon">
@@ -127,7 +122,7 @@
                             <div class="color-swatch" data-color="purple"></div>
                             <div class="color-swatch" data-color="cyan"></div>
                         </div>
-                        <button class="space-icon-menu-btn">Change Icon</button>
+                        <button class="rename-space-btn">Rename Space</button>
                         <button class="new-folder-btn">New Folder</button>
                         <button class="delete-space-btn">Delete Space</button>
                         <div class="options-separator"></div>

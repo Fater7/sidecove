@@ -51,7 +51,7 @@ test('favorites hidden by collapsing the Favorites section cannot be clicked or 
         })
     );
     expect(spots.length).toBe(4);
-    await page.$eval('.space.active .space-toggle-chevron', button => button.click());
+    await page.$eval('.space.active .space-name-toggle', button => button.click());
     await page.waitForSelector('.space.active .pinned-tabs.collapsed');
     await sleep(400);
 
@@ -82,7 +82,7 @@ test('favorites hidden by collapsing the Favorites section cannot be clicked or 
     expect(reachedHidden).toBe(false);
 
     // Expanding brings the favorites back, and they open as before.
-    await page.$eval('.space.active .space-toggle-chevron', button => button.click());
+    await page.$eval('.space.active .space-name-toggle', button => button.click());
     await page.waitForSelector('.space.active .pinned-tabs:not(.collapsed)');
     await sleep(400);
     await page.mouse.click(spots[0].x, spots[0].y);
@@ -100,7 +100,7 @@ test('New Folder with Favorites collapsed opens the section and shows the new fo
     await sleep(800);
     await page.bringToFront();
     if (!(await page.$('.space.active .pinned-tabs.collapsed')))
-        await page.$eval('.space.active .space-toggle-chevron', button => button.click());
+        await page.$eval('.space.active .space-name-toggle', button => button.click());
     await page.waitForSelector('.space.active .pinned-tabs.collapsed');
     const before = await page.$$eval('.space.active .folder', els => els.map(el => el.dataset.bookmarkId));
     await page.$eval('.space.active .new-folder-btn', button => button.click());

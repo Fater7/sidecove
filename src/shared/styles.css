@@ -347,61 +347,10 @@ h3 {
     margin-left: 8px;
 }
 
-.space-toggle-chevron {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    margin-right: 8px;
-    border-radius: 4px;
-    opacity: 0;
-    transition:
-        opacity 0.2s ease,
-        transform 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    width: 0;
-    margin-left: 0;
-    margin-right: 0;
-    padding-left: 0;
-    padding-right: 0;
-    overflow: hidden;
-}
-
-.space-name-container:hover .space-toggle-chevron {
-    opacity: 0.7 !important;
-    pointer-events: auto;
-    width: auto;
-    margin-right: 8px;
-    margin-left: 0px;
-    padding-left: 4px;
-    padding-right: 4px;
-}
-
-.space-name-container:hover .space-name {
-    margin-left: 2px;
-}
-
-.space-toggle-chevron:hover {
-    opacity: 1 !important;
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-.chevron-icon {
-    width: 16px;
-    height: 16px;
-    fill: currentColor;
-    transition: transform 0.2s ease;
-}
-
-.space-toggle-chevron.collapsed .chevron-icon {
-    transform: rotate(-90deg);
-}
-
-.space-name {
+.space-name,
+.space-name-toggle {
     flex-grow: 1;
+    min-width: 0;
     background: none;
     border: none;
     font-size: 16px;
@@ -410,7 +359,16 @@ h3 {
     padding: 4px 0;
     border-radius: 4px;
     opacity: 0.95;
-    transition: margin-left 0.2s ease;
+}
+
+.space-name-toggle {
+    text-align: left;
+    cursor: pointer;
+}
+
+.space-name[hidden],
+.space-name-toggle[hidden] {
+    display: none;
 }
 
 .space-name:focus {
@@ -1053,19 +1011,12 @@ body:not(.archive-and-clear-enabled) .sidebar-button {
     gap: 6px;
 }
 
-.space-chip-icon {
-    display: inline-flex;
-    font-size: 15px;
-    line-height: 1;
-}
-
 .space-chip-name {
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-/* As in Arc: a row of icons, or a dot for a space without one, side by side and centred in
-   the bar. The active space is full strength and the name shows on hover. */
+/* Dots sit side by side and centered; the active space is full strength. */
 .space-switcher.icons-only {
     gap: 2px;
     /* "safe" keeps the first dot reachable: once the dots overflow, the row starts at the left. */
@@ -1107,10 +1058,6 @@ body:not(.archive-and-clear-enabled) .sidebar-button {
     opacity: 1;
 }
 
-.space-switcher.icons-only .space-chip-icon {
-    font-size: 18px;
-}
-
 .space-switcher.icons-only .space-chip-name {
     position: absolute;
     width: 1px;
@@ -1120,7 +1067,7 @@ body:not(.archive-and-clear-enabled) .sidebar-button {
     white-space: nowrap;
 }
 
-.space-switcher.icons-only button:not(.has-icon)::before {
+.space-switcher.icons-only button::before {
     content: '';
     width: 9px;
     height: 9px;
@@ -1128,166 +1075,11 @@ body:not(.archive-and-clear-enabled) .sidebar-button {
     background-color: currentColor;
 }
 
-.space-switcher.icons-only button.active:not(.has-icon)::before {
+.space-switcher.icons-only button.active::before {
     width: 11px;
     height: 11px;
 }
 
-/* Space icon in the header: an emoji, or a faint placeholder on hover. */
-.space-icon-button {
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 26px;
-    margin-right: 4px;
-    padding: 2px;
-    border: none;
-    border-radius: 6px;
-    background: none;
-    color: inherit;
-    font-size: 17px;
-    line-height: 1;
-    cursor: pointer;
-    transition:
-        background-color 0.15s ease,
-        opacity 0.15s ease,
-        width 0.15s ease;
-}
-
-.space-icon-button:hover {
-    background-color: rgba(0, 0, 0, 0.08);
-}
-
-.space-icon-button:not(.has-icon) {
-    width: 0;
-    margin-right: 0;
-    padding: 0;
-    opacity: 0;
-    overflow: hidden;
-}
-
-.space-name-container:hover .space-icon-button:not(.has-icon),
-.space-icon-button:not(.has-icon):focus-visible {
-    width: 26px;
-    margin-right: 4px;
-    padding: 4px;
-    opacity: 0.55;
-}
-
-.space-icon-button svg {
-    width: 18px;
-    height: 18px;
-}
-
-/* A monochrome symbol takes the colour of the text around it. */
-.space-symbol {
-    width: 1em;
-    height: 1em;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.space-icon-results {
-    max-height: 264px;
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-
-.space-icon-heading {
-    margin: 4px 4px 2px;
-    font-size: 11px;
-    font-weight: 600;
-    opacity: 0.6;
-}
-
-.space-icon-empty {
-    margin: 8px 4px;
-    font-size: 12px;
-    opacity: 0.6;
-}
-
-.space-icon-picker {
-    position: fixed;
-    z-index: 1001;
-    width: 232px;
-    padding: 8px;
-    border-radius: 12px;
-    background: #fff;
-    color: #30363d;
-    box-shadow:
-        0 8px 28px rgba(0, 0, 0, 0.18),
-        0 0 0 1px rgba(0, 0, 0, 0.06);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    animation: sidecove-pop-in 0.14s ease-out;
-}
-
-.space-icon-grid {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 4px;
-}
-
-.space-icon-choice {
-    height: 32px;
-    border: none;
-    border-radius: 8px;
-    background: none;
-    color: inherit;
-    font-size: 18px;
-    cursor: pointer;
-    transition:
-        background-color 0.12s ease,
-        transform 0.12s ease;
-}
-
-.space-icon-choice:hover,
-.space-icon-choice:focus-visible {
-    background-color: rgba(0, 0, 0, 0.07);
-    outline: none;
-    transform: scale(1.08);
-}
-
-.space-icon-choice.selected {
-    background-color: rgba(0, 0, 0, 0.12);
-}
-
-.space-icon-custom {
-    width: 100%;
-    padding: 6px 10px;
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 8px;
-    font: inherit;
-    outline: none;
-}
-
-.space-icon-custom:focus {
-    border-color: rgba(0, 0, 0, 0.3);
-}
-
-.space-icon-custom.invalid {
-    border-color: #e25b5b;
-}
-
-.space-icon-remove {
-    padding: 6px;
-    border: none;
-    border-radius: 8px;
-    background: none;
-    font: inherit;
-    color: #b33;
-    cursor: pointer;
-}
-
-.space-icon-remove:hover {
-    background-color: rgba(200, 50, 50, 0.08);
-}
 
 @keyframes sidecove-pop-in {
     from {
@@ -2608,16 +2400,9 @@ body:not(.archive-and-clear-enabled) .sidebar-button {
         color: #eceff1;
     }
 
-    .space-name {
+    .space-name,
+    .space-name-toggle {
         color: #eceff1;
-    }
-
-    .space-toggle-chevron {
-        color: #eceff1;
-    }
-
-    .space-toggle-chevron:hover {
-        background-color: rgba(255, 255, 255, 0.1);
     }
 
     .space-options {
@@ -2747,34 +2532,6 @@ body:not(.archive-and-clear-enabled) .sidebar-button {
 
     .tab-domain-display {
         color: rgba(255, 255, 255, 0.8);
-    }
-
-    .space-icon-picker {
-        background: #2a2a2a;
-        color: #eceff1;
-        box-shadow:
-            0 8px 28px rgba(0, 0, 0, 0.5),
-            0 0 0 1px rgba(255, 255, 255, 0.08);
-    }
-
-    .space-icon-choice:hover,
-    .space-icon-choice:focus-visible,
-    .space-icon-button:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .space-icon-choice.selected {
-        background-color: rgba(255, 255, 255, 0.18);
-    }
-
-    .space-icon-custom {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.15);
-        color: #eceff1;
-    }
-
-    .space-icon-remove {
-        color: #ff8f8f;
     }
 
     .tab-search {

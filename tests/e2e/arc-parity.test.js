@@ -800,152 +800,25 @@ describe('tab search', () => {
     });
 });
 
-describe('space icons and the chip strip', () => {
-    const activeChip = () =>
-        page.$eval('#spaceSwitcher button.active', b => ({
-            icon: b.querySelector('.space-chip-icon')?.textContent || null,
-            name: b.querySelector('.space-chip-name').textContent
-        }));
-
-    test('choosing an icon shows it on the header and chip and survives a reload', async () => {
+describe('space headers and the chip strip', () => {
+    test('space header toggles favorites and the options menu starts renaming', async () => {
         await page.bringToFront();
-        await page.evaluate(() =>
-            document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, ctrlKey: true, code: 'Digit3' }))
-        );
-        await page.waitForFunction(() => document.querySelector('.space.active .space-name').value === 'Music', {
-            polling: 100
-        });
-        await page.$eval('.space.active .space-icon-button', button => button.click());
-        await page.waitForSelector('#spaceIconPicker .space-icon-choice');
-        await page.evaluate(() =>
-            [...document.querySelectorAll('#spaceIconPicker .space-icon-choice')]
-                .find(b => b.textContent === '🎵')
-                .click()
-        );
-        await page.waitForFunction(
-            () => document.querySelector('#spaceSwitcher button.active .space-chip-icon')?.textContent === '🎵',
-            { polling: 100 }
-        );
-        expect(await page.$eval('.space.active .space-icon-button', b => b.textContent)).toBe('🎵');
-        expect(await activeChip()).toEqual({ icon: '🎵', name: 'Music' });
-        await page.waitForFunction(
-            async () => (await chrome.storage.local.get('spaces')).spaces.find(s => s.name === 'Music')?.icon === '🎵',
-            { polling: 100 }
-        );
-        const registryIcon = await page.evaluate(async () => {
-            const { spaces } = await chrome.storage.local.get('spaces');
-            const music = spaces.find(s => s.name === 'Music');
-            return (await chrome.storage.local.get('spaceRegistry')).spaceRegistry[music.bookmarkFolderId].icon;
-        });
-        expect(registryIcon).toBe('🎵');
-        await page.reload();
-        await page.waitForFunction(
-            () => document.querySelector('#spaceSwitcher button.active .space-chip-icon')?.textContent === '🎵',
-            { polling: 100 }
-        );
+        const header = '.space.active .space-name-toggle';
+        await page.waitForSelector(header);
+        await sleep(800);
+        const before = await page.$eval(header, el => el.getAttribute('aria-expanded'));
+        await page.click(header);
+        expect(await page.$eval(header, el => el.getAttribute('aria-expanded'))).not.toBe(before);
+        expect(await page.$('.space.active .space-icon-button, .space.active .space-toggle-chevron')).toBeNull();
+        expect(await page.$('#spaceSwitcher .space-chip-icon')).toBeNull();
+        await page.click('.space.active .space-options');
+        await page.click('.space.active .rename-space-btn');
+        expect(await page.$eval('.space.active .space-name', el => document.activeElement === el)).toBe(true);
+        await page.keyboard.press('Escape');
+        expect(await page.$eval(header, el => !el.hidden)).toBe(true);
     });
 
-    test('a typed emoji can be used, a word cannot, and the icon can be removed', async () => {
-        await page.$eval('.space.active .space-icon-button', button => button.click());
-        await page.waitForSelector('#spaceIconPicker .space-icon-custom');
-        await page.type('#spaceIconPicker .space-icon-custom', 'Jazz');
-        await page.keyboard.press('Enter');
-        expect(
-            await page.$eval('#spaceIconPicker .space-icon-custom', input => input.classList.contains('invalid'))
-        ).toBe(true);
-        await page.$eval('#spaceIconPicker .space-icon-custom', input => {
-            input.value = '';
-        });
-        await page.type('#spaceIconPicker .space-icon-custom', '🎷');
-        await page.keyboard.press('Enter');
-        await page.waitForFunction(
-            () => document.querySelector('#spaceSwitcher button.active .space-chip-icon')?.textContent === '🎷',
-            { polling: 100 }
-        );
-        await page.$eval('.space.active .space-icon-button', button => button.click());
-        await page.$eval('#spaceIconPicker .space-icon-remove', button => button.click());
-        await page.waitForFunction(() => !document.querySelector('#spaceSwitcher button.active .space-chip-icon'), {
-            polling: 100
-        });
-        expect(await page.$eval('#spaceSwitcher button.active', b => b.textContent)).toBe('Music');
-        await page.waitForFunction(
-            async () => (await chrome.storage.local.get('spaces')).spaces.find(s => s.name === 'Music')?.icon === null,
-            { polling: 100 }
-        );
-    });
-
-    test('by default the bar shows each space as its icon, or a dot without one, with its name on hover', async () => {
-        await page.waitForSelector('#spaceSwitcher.icons-only');
-        await page.$eval('.space.active .space-icon-button', button => button.click());
-        await page.evaluate(() =>
-            [...document.querySelectorAll('#spaceIconPicker .space-icon-choice')]
-                .find(b => b.textContent === '🎵')
-                .click()
-        );
-        await page.waitForFunction(
-            () => document.querySelector('#spaceSwitcher button.active .space-chip-icon')?.textContent === '🎵',
-            { polling: 100 }
-        );
-        const chips = await page.$$eval('#spaceSwitcher button[data-space-id]', buttons =>
-            buttons.map(b => {
-                const name = b.querySelector('.space-chip-name');
-                const dot = getComputedStyle(b, '::before');
-                return {
-                    hint: b.title === name.textContent,
-                    nameHidden: name.getBoundingClientRect().width <= 1,
-                    small: b.getBoundingClientRect().width <= 32,
-                    mark: b.classList.contains('has-icon')
-                        ? 'icon'
-                        : dot.content !== 'none' && parseFloat(dot.width) > 0
-                          ? 'dot'
-                          : 'nothing'
-                };
-            })
-        );
-        expect(chips.length).toBeGreaterThan(3);
-        expect(chips.filter(c => !c.hint || !c.nameHidden || !c.small || c.mark === 'nothing')).toEqual([]);
-        expect(chips.some(c => c.mark === 'icon') && chips.some(c => c.mark === 'dot')).toBe(true);
-        const active = await page.$eval('#spaceSwitcher button.active', b => +getComputedStyle(b).opacity);
-        const inactive = await page.$eval('#spaceSwitcher button:not(.active)', b => +getComputedStyle(b).opacity);
-        expect(active).toBeGreaterThan(inactive);
-    });
-
-    test('the icon picker searches symbols and emoji, and a symbol draws in one ink tinted by the space', async () => {
-        await page.bringToFront();
-        await page.$eval('.space.active .space-icon-button', button => button.click());
-        await page.waitForSelector('#spaceIconPicker .space-icon-custom');
-        const shown = () =>
-            page.$$eval('#spaceIconPicker .space-icon-choice', choices => choices.map(c => c.title || c.textContent));
-        await page.type('#spaceIconPicker .space-icon-custom', 'music');
-        expect(await shown()).toEqual(expect.arrayContaining(['Music', '🎵']));
-        await page.$eval('#spaceIconPicker .space-icon-custom', input => {
-            input.value = '';
-        });
-        await page.type('#spaceIconPicker .space-icon-custom', 'zzzz');
-        expect(await page.$eval('#spaceIconPicker .space-icon-empty', el => el.textContent)).toBe('No icons match');
-        await page.$eval('#spaceIconPicker .space-icon-custom', input => {
-            input.value = '';
-        });
-        await page.type('#spaceIconPicker .space-icon-custom', 'plane');
-        await page.keyboard.press('Enter');
-        await page.waitForSelector('#spaceSwitcher button.active .space-chip-icon svg.space-symbol');
-        const ink = await page.$eval('#spaceSwitcher button.active', chip => ({
-            stroke: getComputedStyle(chip.querySelector('svg.space-symbol')).stroke,
-            chip: getComputedStyle(chip).color,
-            header: Boolean(document.querySelector('.space.active .space-icon-button svg.space-symbol'))
-        }));
-        expect(ink.header).toBe(true);
-        expect(ink.stroke).toBe(ink.chip);
-        expect(ink.chip).not.toBe('rgb(0, 0, 0)');
-        await page.waitForFunction(
-            async () =>
-                (await chrome.storage.local.get('spaces')).spaces.find(s => s.name === 'Music')?.icon ===
-                'symbol:plane',
-            { polling: 100 }
-        );
-    });
-
-    test("right-clicking a chip offers its space's icon, name, colour, new folder and delete", async () => {
+    test("right-clicking a chip offers its space's name, colour, new folder and delete", async () => {
         const chipOf = name =>
             page.evaluate(name => {
                 const chip = [...document.querySelectorAll('#spaceSwitcher button[data-space-id]')].find(
@@ -975,7 +848,7 @@ describe('space icons and the chip strip', () => {
             await page.$$eval('#tab-context-menu > .context-menu-item', items =>
                 items.map(el => el.firstChild.textContent)
             )
-        ).toEqual(['Change Space Icon…', 'Rename Space…', 'Theme Color', 'New Folder', 'Delete Space']);
+        ).toEqual(['Rename Space…', 'Theme Color', 'New Folder', 'Delete Space']);
         await pick('Rename Space…');
         await page.waitForFunction(
             () =>
@@ -1010,11 +883,6 @@ describe('space icons and the chip strip', () => {
         );
         expect(await activeSpaceName()).toBe('Home');
         expect(await sidebarColor()).toBe(homeColor);
-        await chipOf('Music');
-        await page.waitForSelector('#tab-context-menu');
-        await pick('Change Space Icon…');
-        await page.waitForSelector('#spaceIconPicker .space-icon-choice');
-        await page.keyboard.press('Escape');
     });
 
     test('with the Names setting, chips keep their full names; the strip scrolls and fades the edge that has more chips', async () => {

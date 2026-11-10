@@ -43,9 +43,9 @@ export async function initSidebarTour() {
             const pins = activeSpace()?.querySelector('.pinned-tabs');
             const collapsed = !pins?.getBoundingClientRect().height;
             el('coach-copy').textContent = collapsed
-                ? `Expand the pinned section with the highlighted arrow. ${step.tip}`
+                ? `Expand the pinned section by clicking the highlighted space name. ${step.tip}`
                 : step.tip;
-            if (collapsed) return activeSpace()?.querySelector('.space-toggle-chevron');
+            if (collapsed) return activeSpace()?.querySelector('.space-name-toggle');
         }
         if (step.id === 'folders') {
             const folder = activeSpace()?.querySelector('.folder');

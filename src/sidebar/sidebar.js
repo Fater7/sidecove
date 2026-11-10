@@ -60,10 +60,8 @@ import {
     FOLDER_CLOSED_DOTS_ICON,
     FOLDER_OPEN_ICON,
     SPEAKER_ICON,
-    SPEAKER_MUTED_ICON,
-    SPACE_ICON_PLACEHOLDER
+    SPEAKER_MUTED_ICON
 } from './icons.js';
-import { normalizeSpaceIcon, spaceSymbol, searchSpaceIcons, isTypedEmoji } from './space-icons.js';
 import { audioState } from './tab-audio.js';
 import { Selection, selectionGesture } from './selection.js';
 import { searchEntries } from './tab-search.js';
@@ -779,22 +777,23 @@ function createSpaceElement(space) {
         }
     });
 
-    // Space icon, as in Arc: shown in the header and on the space's chip.
-    const iconButton = spaceElement.querySelector('.space-icon-button');
-    renderSpaceIconButton(iconButton, space);
-    iconButton.addEventListener('click', e => {
-        e.stopPropagation();
-        showSpaceIconPicker(space, iconButton);
-    });
-    spaceElement.querySelector('.space-icon-menu-btn').addEventListener('click', e => {
-        e.stopPropagation();
-        document.activeElement?.blur?.();
-        showSpaceIconPicker(space, iconButton);
-    });
-
     // Set up space name input
     const nameInput = spaceElement.querySelector('.space-name');
     nameInput.value = space.name;
+    const nameToggle = spaceElement.querySelector('.space-name-toggle');
+    nameToggle.textContent = space.name;
+    spaceElement.querySelector('.rename-space-btn').addEventListener('click', () => {
+        nameToggle.hidden = true;
+        nameInput.hidden = false;
+        nameInput.select();
+    });
+    nameInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') nameInput.blur();
+        if (e.key === 'Escape') {
+            nameInput.value = space.name;
+            nameInput.blur();
+        }
+    });
     let spaceEditSession = null;
     nameInput.addEventListener('focus', () => {
         if (!spaceEditSession) spaceEditSession = editorSessions.begin('space', space.id);
@@ -807,6 +806,7 @@ function createSpaceElement(space) {
                 await chrome.bookmarks.update(oldFolder.id, { title: nameInput.value });
                 await LocalStorage.updateSpaceRegistryEntry(oldFolder.id, { name: nameInput.value });
                 space.name = nameInput.value;
+                nameToggle.textContent = space.name;
                 await saveSpaces();
                 await updateSpaceSwitcher();
             });
@@ -818,44 +818,23 @@ function createSpaceElement(space) {
         }
     });
     nameInput.addEventListener('blur', () => {
+        nameInput.hidden = true;
+        nameToggle.hidden = false;
         if (!spaceEditSession) return;
         const session = spaceEditSession;
         spaceEditSession = null;
         editorSessions.complete(session);
     });
 
-    // Set up chevron toggle for pinned section
-    const chevronButton = spaceElement.querySelector('.space-toggle-chevron');
+    // The space name toggles its pinned section.
     const pinnedSection = spaceElement.querySelector('.pinned-tabs');
-
-    // Initialize state from localStorage or default to expanded
     const isPinnedCollapsed = localStorage.getItem(`space-${space.id}-pinned-collapsed`) === 'true';
-    if (isPinnedCollapsed) {
-        chevronButton.classList.add('collapsed');
-        pinnedSection.classList.add('collapsed');
-    }
-
-    // Initialize chevron state
-    updateChevronState(spaceElement, pinnedSection);
-
-    chevronButton.addEventListener('click', e => {
-        e.stopPropagation(); // Prevent space name editing
-        const isCollapsed = chevronButton.classList.contains('collapsed');
-
-        if (isCollapsed) {
-            // Expand
-            chevronButton.classList.remove('collapsed');
-            pinnedSection.classList.remove('collapsed');
-            localStorage.setItem(`space-${space.id}-pinned-collapsed`, 'false');
-        } else {
-            // Collapse
-            chevronButton.classList.add('collapsed');
-            pinnedSection.classList.add('collapsed');
-            localStorage.setItem(`space-${space.id}-pinned-collapsed`, 'true');
-        }
-
-        // Update chevron state
-        updateChevronState(spaceElement, pinnedSection);
+    pinnedSection.classList.toggle('collapsed', isPinnedCollapsed);
+    updateSpaceDisclosureState(spaceContainer, pinnedSection);
+    nameToggle.addEventListener('click', () => {
+        const isCollapsed = pinnedSection.classList.toggle('collapsed');
+        localStorage.setItem(`space-${space.id}-pinned-collapsed`, String(isCollapsed));
+        updateSpaceDisclosureState(spaceContainer, pinnedSection);
     });
 
     // Set up containers
@@ -941,138 +920,6 @@ function createSpaceElement(space) {
             }
         });
     }
-}
-
-// Draws an icon into element: a symbol as an SVG in the current text colour, anything else
-// as text. Symbols are built from Sidecove's own shape data, never from markup.
-function drawSpaceIcon(element, icon) {
-    const symbol = spaceSymbol(icon);
-    if (!symbol) {
-        element.textContent = icon;
-        return;
-    }
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', '0 0 24 24');
-    svg.setAttribute('class', 'space-symbol');
-    svg.setAttribute('aria-hidden', 'true');
-    for (const [tag, attrs] of symbol.nodes) {
-        const shape = document.createElementNS(ns, tag);
-        for (const [name, value] of Object.entries(attrs)) shape.setAttribute(name, value);
-        svg.appendChild(shape);
-    }
-    element.replaceChildren(svg);
-}
-
-function renderSpaceIconButton(button, space) {
-    if (!button) return;
-    button.classList.toggle('has-icon', Boolean(space.icon));
-    if (space.icon) drawSpaceIcon(button, space.icon);
-    else button.innerHTML = SPACE_ICON_PLACEHOLDER;
-}
-
-async function setSpaceIcon(space, icon) {
-    // null rather than delete, so the change reaches the stored space through the patch.
-    space.icon = icon || null;
-    await saveSpaces();
-    await LocalStorage.updateSpaceRegistryEntry(space.bookmarkFolderId, { icon: space.icon });
-    renderSpaceIconButton(getSpaceElement(space.id)?.querySelector('.space-icon-button'), space);
-    await updateSpaceSwitcher();
-}
-
-function showSpaceIconPicker(space, anchor) {
-    document.getElementById('spaceIconPicker')?.remove();
-    const picker = document.createElement('div');
-    picker.id = 'spaceIconPicker';
-    picker.className = 'space-icon-picker';
-    picker.setAttribute('role', 'dialog');
-    picker.setAttribute('aria-label', `Icon for ${space.name}`);
-    const close = () => {
-        picker.remove();
-        document.removeEventListener('mousedown', onOutside, true);
-    };
-    const choose = async icon => {
-        close();
-        try {
-            await setSpaceIcon(space, icon);
-        } catch (error) {
-            alert(error.message);
-        }
-    };
-    const onOutside = event => {
-        if (!picker.contains(event.target)) close();
-    };
-
-    // Monochrome symbols first, as in Arc, then emoji; the search box filters both by name
-    // and keyword, and a typed emoji can be used as it is.
-    const search = document.createElement('input');
-    search.type = 'search';
-    search.className = 'space-icon-custom';
-    search.placeholder = 'Search, or type an emoji';
-    search.setAttribute('aria-label', 'Search icons, or type an emoji');
-    const results = document.createElement('div');
-    results.className = 'space-icon-results';
-    const section = (title, icons) => {
-        if (!icons.length) return [];
-        const heading = document.createElement('p');
-        heading.className = 'space-icon-heading';
-        heading.textContent = title;
-        const grid = document.createElement('div');
-        grid.className = 'space-icon-grid';
-        for (const icon of icons) {
-            const choice = document.createElement('button');
-            choice.type = 'button';
-            choice.className = 'space-icon-choice';
-            choice.classList.toggle('selected', icon === space.icon);
-            choice.title = spaceSymbol(icon)?.label || '';
-            drawSpaceIcon(choice, icon);
-            choice.addEventListener('click', () => choose(icon));
-            grid.appendChild(choice);
-        }
-        return [heading, grid];
-    };
-    const showResults = () => {
-        const found = searchSpaceIcons(search.value);
-        const empty = document.createElement('p');
-        empty.className = 'space-icon-empty';
-        empty.textContent = isTypedEmoji(search.value) ? 'Press Enter to use this emoji' : 'No icons match';
-        const sections = [...section('Symbols', found.symbols), ...section('Emoji', found.emoji)];
-        results.replaceChildren(...(sections.length ? sections : [empty]));
-    };
-    search.addEventListener('keydown', event => {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            close();
-            return;
-        }
-        if (event.key !== 'Enter') return;
-        const first = results.querySelector('.space-icon-choice');
-        if (isTypedEmoji(search.value)) choose(normalizeSpaceIcon(search.value));
-        else if (first && search.value.trim()) first.click();
-        else search.classList.add('invalid');
-    });
-    search.addEventListener('input', () => {
-        search.classList.remove('invalid');
-        showResults();
-    });
-    showResults();
-    picker.append(search, results);
-    if (space.icon) {
-        const remove = document.createElement('button');
-        remove.type = 'button';
-        remove.className = 'space-icon-remove';
-        remove.textContent = 'Remove Icon';
-        remove.addEventListener('click', () => choose(null));
-        picker.appendChild(remove);
-    }
-    picker.addEventListener('keydown', event => {
-        if (event.key === 'Escape') close();
-    });
-    document.body.appendChild(picker);
-    const rect = anchor.getBoundingClientRect();
-    Utils.adjustMenuPosition(picker, Math.max(8, rect.left - 4), rect.bottom + 6);
-    document.addEventListener('mousedown', onOutside, true);
-    (results.querySelector('.selected') || search).focus();
 }
 
 async function moveSpaceFolderBefore(space, nextSpace) {
@@ -1189,7 +1036,7 @@ async function updateSpaceSwitcher() {
 
     spaces.forEach(space => {
         const button = document.createElement('button');
-        fillSpaceChip(button, space.name, space.icon);
+        fillSpaceChip(button, space.name);
         button.dataset.spaceId = space.id; // Store space ID
         button.classList.toggle('active', space.id === activeSpaceId);
         button.draggable = true; // Make the button draggable
@@ -1244,7 +1091,7 @@ async function updateSpaceSwitcher() {
                 return;
             } else {
                 const button = document.createElement('button');
-                fillSpaceChip(button, spaceFolder.title, null);
+                fillSpaceChip(button, spaceFolder.title);
                 button.addEventListener('click', async () => {
                     const newTab = await ChromeHelper.createNewTab();
                     await createSpaceFromInactive(spaceFolder.title, newTab);
@@ -1276,10 +1123,9 @@ function showSpaceChipMenu(space, chip, x, y) {
         x,
         y,
         [
-            { label: 'Change Space Icon…', action: () => showSpaceIconPicker(space, chip) },
             {
                 label: 'Rename Space…',
-                action: () => inSpace(element => element?.querySelector('.space-name')?.select())
+                action: () => inSpace(element => element?.querySelector('.rename-space-btn')?.click())
             },
             {
                 label: 'Theme Color',
@@ -1297,7 +1143,7 @@ function showSpaceChipMenu(space, chip, x, y) {
     );
 }
 
-// Arc shows each space as its icon, or a dot when it has none, and its name on hover; the
+// The space bar shows a dot and its name on hover; the
 // 'names' setting shows full names instead. The name stays in the chip for screen readers.
 function applySpaceSwitcherStyle(style) {
     spaceSwitcher.classList.toggle('icons-only', style !== 'names');
@@ -1305,15 +1151,8 @@ function applySpaceSwitcherStyle(style) {
     revealActiveSpaceChip();
 }
 
-function fillSpaceChip(button, name, icon) {
+function fillSpaceChip(button, name) {
     button.title = name;
-    button.classList.toggle('has-icon', Boolean(icon));
-    if (icon) {
-        const iconElement = document.createElement('span');
-        iconElement.className = 'space-chip-icon';
-        drawSpaceIcon(iconElement, icon);
-        button.appendChild(iconElement);
-    }
     const label = document.createElement('span');
     label.className = 'space-chip-name';
     label.textContent = name;
@@ -1687,13 +1526,6 @@ async function moveTabToPinned(space, tab) {
         space.spaceBookmarks.push(tab.id);
     }
 
-    // Update chevron state after moving tab to pinned
-    const spaceElement = document.querySelector(`[data-space-id="${space.id}"]`);
-    if (spaceElement) {
-        const pinnedContainer = spaceElement.querySelector('[data-tab-type="pinned"]');
-        updateChevronState(spaceElement, pinnedContainer);
-    }
-
     // Update placeholders after moving tab to pinned
     updatePinnedSectionPlaceholders();
 
@@ -1742,13 +1574,6 @@ async function moveTabToTemp(space, tab, { temporaryDisplayOrder = null, inverte
 
     // No longer a space-pinned tab; clear pinned state mapping.
     await Utils.removePinnedTabState(tab.id);
-
-    // Update chevron state after moving tab from pinned
-    const spaceElement = document.querySelector(`[data-space-id="${space.id}"]`);
-    if (spaceElement) {
-        const pinnedContainer = spaceElement.querySelector('[data-tab-type="pinned"]');
-        updateChevronState(spaceElement, pinnedContainer);
-    }
 
     // Persist extension ordering after membership changes.
     await persistSpaceTabOrder(space.id);
@@ -2590,7 +2415,7 @@ function setupPlaceholderDragAndDrop(placeholderContainer, pinnedContainer) {
 async function createNewFolder(spaceElement, parentFolderElement = null) {
     // The new folder goes into Favorites; a collapsed section would hide it and its name field.
     if (spaceElement.querySelector('.pinned-tabs.collapsed'))
-        spaceElement.querySelector('.space-toggle-chevron')?.click();
+        spaceElement.querySelector('.space-name-toggle')?.click();
     const space = spaces.find(s => s.id === spaceElement.dataset.spaceId);
     const spaceFolder = await getSpaceBookmarkFolder(space);
     const parentId = parentFolderElement?.dataset.bookmarkId || spaceFolder.id;
@@ -2980,19 +2805,11 @@ async function refreshActiveSpaceUI({ force = false } = {}) {
     }
 }
 
-// Function to update chevron state based on pinned section visibility
-function updateChevronState(spaceElement, pinnedContainer) {
-    const chevronButton = spaceElement.querySelector('.space-toggle-chevron');
-    const isCollapsed = pinnedContainer.classList.contains('collapsed');
-    if (!chevronButton) {
-        return;
-    }
-
-    if (isCollapsed) {
-        chevronButton.classList.add('collapsed');
-    } else {
-        chevronButton.classList.remove('collapsed');
-    }
+// Keep the disclosure state available to assistive technology.
+function updateSpaceDisclosureState(spaceElement, pinnedContainer) {
+    spaceElement.querySelector('.space-name-toggle')?.setAttribute(
+        'aria-expanded', String(!pinnedContainer.classList.contains('collapsed'))
+    );
 }
 
 async function closeTab(tabElement, tab, isPinned = false, isBookmarkOnly = false) {
