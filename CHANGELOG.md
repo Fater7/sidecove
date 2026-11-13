@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Copy URL toast.** The keyboard shortcut shows its confirmation at the top of the current page, even when the sidebar is closed. Restricted pages keep the sidebar confirmation.
 - **Space headers.** Click the space name to collapse or expand favorites; rename from the options menu. Space icons are no longer shown.
 
 - **Folder renaming.** Rename folders from their right-click menu; double-clicking no longer opens the name editor.

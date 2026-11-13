@@ -84,7 +84,7 @@ We use GitHub Issues to track bugs and feature requests. Before creating a new i
    - Potential implementation ideas (optional)
    - Mock-ups or examples (if applicable)
 
-Sidecove only adds features that work with the permissions it has today. It can see your tabs' titles and addresses, use the side panel, save settings, keep spaces and favorites in a FaterSide bookmarks folder, run a timer for auto-archive, show tab icons and copy a tab's address. It has no access to websites, no content scripts and no network access. A request that needs more than this cannot be done and will be closed as not possible.
+FaterSide can see your tabs' titles and addresses, use the side panel, save settings, keep spaces and favorites in a bookmarks folder, run a timer for auto-archive, show tab icons and copy a tab's address. The copy-current-URL shortcut temporarily accesses the active page to show a confirmation; it does not read page content or send data over the network.
 
 ## Contributing
 

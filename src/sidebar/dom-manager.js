@@ -772,7 +772,6 @@ export function setupQuickPinListener(
                     .writeText(request.url)
                     .then(() => {
                         Logger.log(`[URLCopy] Sidebar fallback succeeded: ${request.url}`);
-                        showUrlCopyToast(); // Show success toast
                         sendResponse({ success: true });
                     })
                     .catch(err => {

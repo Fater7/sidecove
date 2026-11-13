@@ -5,6 +5,8 @@
   "description": "Spaces, pinned tabs and favourites in Chrome's side panel, for people moving from Arc. Optional auto-archive. Free, no tracking.",
   "permissions": [
     "tabs",
+    "activeTab",
+    "scripting",
     "tabGroups",
     "sidePanel",
     "storage",

@@ -9,6 +9,7 @@ Sidecove is a Chrome extension that shows your tabs in a vertical sidebar and or
 - **Tabs:** the title, URL and favicon of your open tabs, so it can show, switch, move, open and close them in the sidebar.
 - **Bookmarks:** the bookmarks inside its own **Sidecove** folder, where your spaces, folders and pinned tabs are stored. It also lists your other bookmarks to show them in the sidebar.
 - **Tab groups:** only when you turn on **Sync spaces to Chrome tab groups**.
+- **Current page:** when you use the copy-current-URL shortcut, temporary access to the active page lets FaterSide display a confirmation. It does not read the page content.
 
 ## Where your data is kept
 

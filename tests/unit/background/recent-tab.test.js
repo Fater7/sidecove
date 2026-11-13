@@ -146,5 +146,4 @@ test('the manifest declares the command without a suggested key', () => {
     const manifest = JSON.parse(readFileSync(new URL('../../../manifest.json', import.meta.url), 'utf8'));
     assert.ok(manifest.commands.RecentTabInSpace.description);
     assert.equal(manifest.commands.RecentTabInSpace.suggested_key, undefined);
-    assert.equal(manifest.permissions.length, 9, 'no permission was added');
 });

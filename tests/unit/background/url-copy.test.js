@@ -11,6 +11,9 @@ function offscreenChrome(calls, { offscreenResult = { success: true } } = {}) {
                 return [{ id: 7, url: 'https://example.org' }];
             }
         },
+        scripting: {
+            executeScript: async details => calls.push(['inject', details])
+        },
         runtime: {
             getURL: path => `chrome-extension://sidecove/${path}`,
             getContexts: async () => [],
@@ -39,25 +42,26 @@ test('uses an offscreen document when Chrome provides the clipboard context', as
         calls.find(call => call[0] === 'close'),
         ['close']
     );
-    assert.ok(
-        calls.some(call => call[1]?.action === 'urlCopySuccess'),
-        'the sidebar is told to show its toast'
-    );
+    assert.equal(calls.find(call => call[0] === 'inject')[1].target.tabId, 7);
+    assert.equal(calls.some(call => call[1]?.action === 'urlCopySuccess'), false);
 });
 
-test('copies the current URL without the scripting API', async () => {
+test('falls back to the sidebar toast when the page cannot be scripted', async () => {
     const calls = [];
     const chromeApi = offscreenChrome(calls);
-    assert.equal(chromeApi.scripting, undefined);
+    chromeApi.scripting.executeScript = async () => { throw new Error('Restricted page'); };
 
     assert.equal(await copyCurrentTabUrlWithFallback({ chromeApi }), true);
     assert.equal(calls.find(call => call[1]?.target === 'offscreen')[1].text, 'https://example.org');
+    assert.ok(calls.some(call => call[1]?.action === 'urlCopySuccess'));
 });
 
-test('the manifest no longer requests the scripting permission', () => {
+test('page access is limited to the active tab', () => {
     const manifest = JSON.parse(readFileSync(new URL('../../../manifest.json', import.meta.url), 'utf8'));
     assert.deepEqual(manifest.permissions, [
         'tabs',
+        'activeTab',
+        'scripting',
         'tabGroups',
         'sidePanel',
         'storage',
@@ -71,7 +75,7 @@ test('the manifest no longer requests the scripting permission', () => {
     assert.equal(manifest.content_scripts, undefined);
 });
 
-test('falls back to the sidebar, never page injection, when the offscreen copy fails', async () => {
+test('falls back to the sidebar for copying, then shows the page toast', async () => {
     const injected = [];
     const sidebarMessages = [];
     const chromeApi = {
@@ -99,7 +103,8 @@ test('falls back to the sidebar, never page injection, when the offscreen copy f
     };
 
     assert.equal(await copyCurrentTabUrlWithFallback({ chromeApi }), true);
-    assert.deepEqual(injected, []);
+    assert.equal(injected.length, 1);
+    assert.equal(injected[0].target.tabId, 42);
     assert.deepEqual(sidebarMessages, [{ command: 'copyCurrentUrl', url: 'https://example.com/article' }]);
 });
 
