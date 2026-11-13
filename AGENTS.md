@@ -12,8 +12,9 @@ FaterSide 是 Sidecove 的自用 fork：Chrome Manifest V3 扩展，用原生侧
 ## 开发与交付
 
 - 用 Node 24（`.nvmrc`）；依赖缺失时运行 `npm ci`。本机可执行命令见 `DEVELOPMENT.md`。
-- 提交前运行 `npm run test:unit`，按改动运行必要的 lint、构建和相关自动化测试。用户自行体验界面，默认不使用 Computer Use 操作日常 Chrome 验证。测试和更新步骤见 `DEVELOPMENT.md`。
-- 扩展代码改动后执行 `npm run build` 和 `npm run verify:dist`，更新 Chrome 当前加载的本仓库 `dist/`，并自行重载已安装的 FaterSide；不能静默重载时使用 Chrome 界面操作。保留其他标签页、扩展设置和用户数据，不把构建完成当作已重载。
+- 日常功能开发，尤其是小改动，先快速实现并做必要的初步验证，交给用户体验；用户确认体验没有问题后，再进行完整验证和自测。用户提出调整时先继续迭代，再进入完整验证。用户自行体验界面，默认不使用 Computer Use 操作日常 Chrome 验证。
+- 提交前运行 `npm run test:unit`，按改动运行必要的 lint、构建和相关自动化测试。测试和更新步骤见 `DEVELOPMENT.md`。
+- 扩展代码改动后先执行 `npm run build`，更新 Chrome 当前加载的本仓库 `dist/`，并自行重载已安装的 FaterSide，供用户体验；不能静默重载时使用 Chrome 界面操作。用户确认体验后执行 `npm run verify:dist` 等完整验证。保留其他标签页、扩展设置和用户数据，不把构建完成当作已重载。
 - 不要为更新而卸载后重装，以免更换 ID 或丢失设置、快捷键。用户将 `⌘S` 指派为侧栏开关，重载后保留该指派。
 - 触摸板手势和动画手感不能仅凭模拟滚轮或截图认定通过；说明验证范围，由用户实际体验。
 - 完成用户请求后直接在 `fater7/main` 提交并推送至 `origin/fater7/main`，无需再次询问。只暂存本次改动；行为变更在 `CHANGELOG.md` 的 Unreleased 下补一行。无需因自用改动执行上游商店发布流程。

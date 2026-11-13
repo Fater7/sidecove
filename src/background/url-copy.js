@@ -15,7 +15,7 @@ function showPageCopyToast() {
     const style = document.createElement('style');
     style.textContent = `
         :host {
-            all: initial; position: fixed; inset: 24px auto auto 50%; margin: 0;
+            all: initial; position: fixed; inset: 90px auto auto 50%; margin: 0;
             transform: translateX(-50%); border: 0; padding: 8px 16px;
             border-radius: 20px; background: #000; color: #fff;
             font: 500 14px/1.4 system-ui, sans-serif; text-align: center;
