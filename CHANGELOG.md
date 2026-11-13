@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Nested folders.** Collapsing a folder also collapses all folders inside it.
 - **Copy URL toast.** The keyboard shortcut shows a one-second confirmation slightly below the top of the current page, even when the sidebar is closed. Restricted pages keep the sidebar confirmation.
 - **Space headers.** Click the space name to collapse or expand favorites; rename from the options menu. Space icons are no longer shown.
 

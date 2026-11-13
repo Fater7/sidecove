@@ -90,3 +90,40 @@ test('folders expand and collapse without a hover arrow', async () => {
         wasCollapsed
     );
 });
+
+test('collapsing a folder also collapses every descendant and saves their states', async () => {
+    const ids = await sidebar.evaluate(async () => {
+        const [root] = await chrome.bookmarks.search({ title: 'FaterSide' });
+        const [space] = (await chrome.bookmarks.getChildren(root.id)).filter(node => !node.url);
+        const parent = await chrome.bookmarks.create({ parentId: space.id, title: 'Parent' });
+        const child = await chrome.bookmarks.create({ parentId: parent.id, title: 'Child' });
+        const grandchild = await chrome.bookmarks.create({ parentId: child.id, title: 'Grandchild' });
+        const sibling = await chrome.bookmarks.create({ parentId: space.id, title: 'Sibling' });
+        const ids = [parent.id, child.id, grandchild.id, sibling.id];
+        await chrome.storage.local.set(Object.fromEntries(ids.map(id => [`folderCollapsed:${id}`, false])));
+        return ids;
+    });
+    const [parent, child, grandchild, sibling] = ids.map(id => `.folder[data-bookmark-id="${id}"]`);
+    await sidebar.reload();
+    await sidebar.waitForSelector(parent);
+    await sidebar.waitForSelector(grandchild);
+    expect(await sidebar.$eval(grandchild, folder => folder.classList.contains('collapsed'))).toBe(false);
+    await sidebar.$eval(`${parent} > .folder-header`, header => header.click());
+    await sidebar.waitForFunction(async ids => {
+        const values = await chrome.storage.local.get(ids.map(id => `folderCollapsed:${id}`));
+        return ids.slice(0, 3).every(id => values[`folderCollapsed:${id}`] === true);
+    }, {}, ids);
+    await sidebar.$eval(`${parent} > .folder-header`, header => header.click());
+    for (const selector of [child, grandchild]) {
+        expect(await sidebar.$eval(selector, folder => folder.classList.contains('collapsed'))).toBe(true);
+    }
+    expect(await sidebar.$eval(sibling, folder => folder.classList.contains('collapsed'))).toBe(false);
+    await sidebar.waitForFunction(async id => (await chrome.storage.local.get(`folderCollapsed:${id}`))[`folderCollapsed:${id}`] === false, {}, ids[0]);
+    await sidebar.reload();
+    await sidebar.waitForSelector(parent);
+    expect(await sidebar.$eval(parent, folder => folder.classList.contains('collapsed'))).toBe(false);
+    for (const selector of [child, grandchild]) {
+        expect(await sidebar.$eval(selector, folder => folder.classList.contains('collapsed'))).toBe(true);
+    }
+    expect(await sidebar.$eval(sibling, folder => folder.classList.contains('collapsed'))).toBe(false);
+});

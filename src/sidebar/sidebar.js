@@ -1371,6 +1371,18 @@ function setFolderCollapsed(folderElement, collapsed, persist = true) {
     }
 }
 
+function toggleFolder(folderElement) {
+    const collapsed = !folderElement.classList.contains('collapsed');
+    if (collapsed) {
+        folderElement.querySelectorAll('.folder').forEach(child => {
+            collapsedFolderShownTabs.delete(child);
+            setFolderCollapsed(child, true);
+        });
+    }
+    collapsedFolderShownTabs.delete(folderElement);
+    setFolderCollapsed(folderElement, collapsed);
+}
+
 // Drag auto-open and child creation use the same durable state as manual toggles.
 function openFolder(folderElement) {
     if (folderElement.classList.contains('collapsed')) setFolderCollapsed(folderElement, false);
@@ -2442,9 +2454,7 @@ async function createNewFolder(spaceElement, parentFolderElement = null) {
 
     setupFolderDragHandlers(folderElement);
     folderHeader.addEventListener('click', () => {
-        // Clear the tracked shown tabs when user manually toggles the folder (Arc behavior).
-        collapsedFolderShownTabs.delete(folderElement);
-        setFolderCollapsed(folderElement, !folderElement.classList.contains('collapsed'));
+        toggleFolder(folderElement);
     });
 
     // Keep the created folder's identity when this editor is used again.
@@ -2590,9 +2600,7 @@ async function renderSpaceTabs(space, pinnedContainer, tempContainer) {
                         setupFolderDragHandlers(folderElement);
 
                         folderHeader.addEventListener('click', () => {
-                            // Clear the tracked shown tabs when user manually toggles the folder (Arc behavior).
-                            collapsedFolderShownTabs.delete(folderElement);
-                            setFolderCollapsed(folderElement, !folderElement.classList.contains('collapsed'));
+                            toggleFolder(folderElement);
                         });
 
                         folderElement.addEventListener('rename-folder', () => {
@@ -2656,7 +2664,7 @@ async function renderSpaceTabs(space, pinnedContainer, tempContainer) {
 
                         // Update folder placeholder state after loading contents
                         updateFolderPlaceholder(folderElement);
-                        // Restore parent and child states independently after their contents render.
+                        // Restore saved state after the folder's contents render.
                         setFolderCollapsed(folderElement, await loadFolderCollapsed(item.id), false);
                     } else {
                         // This is a bookmark
