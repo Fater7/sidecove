@@ -32,7 +32,7 @@ function showPageCopyToast() {
     document.documentElement.append(toast);
     toast.showPopover();
     document.ariaNotify?.('Copied current URL');
-    setTimeout(() => toast.remove(), 2000);
+    setTimeout(() => toast.remove(), 1000);
 }
 
 async function showCopySuccess(chromeApi, tabId, logger) {
