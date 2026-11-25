@@ -12,7 +12,7 @@
  * - Provides real-time feedback for setting changes
  */
 
-import { Utils, normalizePinMatchHost } from '../shared/utils.js';
+import { Utils, normalizePinMatchHost, DEFAULT_DUPLICATE_TAB_IDLE_MINUTES } from '../shared/utils.js';
 import { LocalStorage } from '../shared/localstorage.js';
 import { Logger } from '../shared/logger.js';
 import {
@@ -116,7 +116,8 @@ async function saveOptions() {
         defaultSpaceName: defaultSpaceNameSelect?.value || 'Home',
         archiveAndClearEnabled: getCheckboxValue(document.getElementById('archiveAndClearEnabled'), false),
         mergeDuplicateTabsEnabled: getCheckboxValue(document.getElementById('mergeDuplicateTabsEnabled'), true),
-        mergeDuplicateTabsIdleMinutes: parseInt(mergeDuplicateTabsIdleMinutesInput.value, 10) || 120,
+        mergeDuplicateTabsIdleMinutes:
+            parseInt(mergeDuplicateTabsIdleMinutesInput.value, 10) || DEFAULT_DUPLICATE_TAB_IDLE_MINUTES,
         autoArchiveEnabled: getCheckboxValue(document.getElementById('autoArchiveEnabled'), false),
         autoArchiveIdleMinutes: parseInt(autoArchiveIdleMinutesInput?.value, 10) || 360,
         perSpacePinnedFavorites: getCheckboxValue(document.getElementById('perSpacePinnedFavorites'), false),

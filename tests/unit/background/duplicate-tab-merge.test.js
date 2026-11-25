@@ -168,3 +168,28 @@ test('the alarm is removed when the setting is disabled', async () => {
     await feature.configureAlarm();
     assert.equal(cleared, DUPLICATE_TAB_ALARM);
 });
+
+test('replaces a five-minute alarm and preserves an existing ten-minute alarm', async () => {
+    const event = () => ({ addListener() {} });
+    let alarm = { periodInMinutes: 5 };
+    const created = [];
+    const { configureAlarm } = registerDuplicateTabMerge({
+        chromeApi: {
+            alarms: {
+                onAlarm: event(),
+                get: async () => alarm,
+                create: async (name, options) => {
+                    created.push([name, options]);
+                    alarm = options;
+                }
+            },
+            storage: { onChanged: event() }
+        },
+        getSettings: async () => ({ mergeDuplicateTabsEnabled: true })
+    });
+
+    // Allow registration to configure the existing alarm before simulating another startup.
+    await new Promise(resolve => setImmediate(resolve));
+    await configureAlarm();
+    assert.deepEqual(created, [[DUPLICATE_TAB_ALARM, { periodInMinutes: 10 }]]);
+});

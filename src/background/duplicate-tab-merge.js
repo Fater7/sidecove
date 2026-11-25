@@ -4,7 +4,7 @@ import { Logger } from '../shared/logger.js';
 
 export const DUPLICATE_TAB_ALARM = 'mergeDuplicateTabs';
 const FIRST_SEEN_KEY = 'duplicateTabsFirstSeen';
-const CHECK_MINUTES = 5;
+const CHECK_MINUTES = 10;
 
 // Only ordinary pages are candidates. Keep active, playing, pinned and favorite tabs even
 // when another tab has the same address. Never treat a missing activity time as old.
@@ -45,7 +45,7 @@ export function registerDuplicateTabMerge({ chromeApi = chrome, spaceStore, getS
         try {
             const { mergeDuplicateTabsEnabled } = await getSettings();
             if (!mergeDuplicateTabsEnabled) await chromeApi.alarms.clear(DUPLICATE_TAB_ALARM);
-            else if (!(await chromeApi.alarms.get(DUPLICATE_TAB_ALARM))) {
+            else if ((await chromeApi.alarms.get(DUPLICATE_TAB_ALARM))?.periodInMinutes !== CHECK_MINUTES) {
                 await chromeApi.alarms.create(DUPLICATE_TAB_ALARM, { periodInMinutes: CHECK_MINUTES });
             }
         } catch (error) {

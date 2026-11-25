@@ -34,7 +34,7 @@ FaterSide 是 Sidecove 的自用 fork。用户操作 Chrome 原生侧栏中的�
 - **书签文件夹与顺序**：`src/sidebar/space-bookmarks.js` 读取 Space 书签树；`src/sidebar/folder-policy.js` 管理文件夹操作规则；排序相关写入走 `src/background/bookmark-writer.js`。后台 `bookmark-events.js` 通知侧栏刷新；顶部 Favorites 也直接监听书签事件。
 - **设置**：`src/options.html` 添加控件、`src/options/options.js` 读写，`src/shared/utils.js` 设置默认值；按需在侧栏监听 `chrome.storage.onChanged`。搜索框的显示逻辑见 `src/sidebar/features/tab-search/visibility.js`。
 - **关闭、归档、撤销和新标签**：分别从 `src/sidebar/features/close-tab/`、`clean-all/`、`new-tab/` 和 `src/background/pending-clean.js`、`auto-archive.js` 开始。归档和 Clear 默认关闭，由设置共同控制。
-- **重复标签页合并**：`src/background/duplicate-tab-merge.js` 定期检查同一窗口和 Space 内的完全相同网址，按设置的未访问时间处理；默认开启、两小时。
+- **重复标签页合并**：`src/background/duplicate-tab-merge.js` 每 10 分钟检查同一窗口和 Space 内的完全相同网址，按设置的未访问时间处理。默认开启，闲置门槛默认 10 分钟。
 
 ## 验证与浏览器边界
 

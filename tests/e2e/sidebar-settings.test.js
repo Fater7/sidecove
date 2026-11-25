@@ -50,9 +50,9 @@ test('archive and Clear are hidden by default and follow the setting', async () 
     expect(await sidebar.$eval('.space.active .space-content', content => content.classList.contains('hidden'))).toBe(false);
 });
 
-test('duplicate merging is on by default and its interval can be changed', async () => {
+test('duplicate merging is on by default and its idle time can be changed', async () => {
     expect(await options.$eval('#mergeDuplicateTabsEnabled', input => input.checked)).toBe(true);
-    expect(await options.$eval('#mergeDuplicateTabsIdleMinutes', input => input.value)).toBe('120');
+    expect(await options.$eval('#mergeDuplicateTabsIdleMinutes', input => input.value)).toBe('10');
     await options.$eval('#mergeDuplicateTabsEnabled', input => input.click());
     expect(await options.$eval('#mergeDuplicateTabsIdleMinutes', input => input.disabled)).toBe(true);
     await options.$eval('#mergeDuplicateTabsEnabled', input => input.click());

@@ -7,7 +7,7 @@
 - **Space headers.** Click the space name to collapse or expand favorites; rename from the options menu. Space icons are no longer shown.
 
 - **Folder renaming.** Rename folders from their right-click menu; double-clicking no longer opens the name editor.
-- **Duplicate tabs.** Settings can automatically merge exact-address duplicates in the same window and space after a configurable period of inactivity. The setting is on by default, with an interval of two hours.
+- **Duplicate tabs.** Automatic merging checks for exact-address duplicates in the same window and space every 10 minutes. It is on by default with a configurable idle time of 10 minutes.
 - **Archive and Clear.** Both controls and automatic archiving are off by default and can be enabled together in Settings.
 - **Trackpad space switching.** A long swipe and its momentum now switch spaces only once.
 - **Folder context menus.** Right-clicking a tab inside a folder opens only the tab menu.

@@ -20,6 +20,7 @@ import { Logger } from './logger.js';
 
 const MAX_ARCHIVED_TABS = 100;
 const ARCHIVED_TABS_KEY = 'archivedTabs';
+export const DEFAULT_DUPLICATE_TAB_IDLE_MINUTES = 10;
 
 // Hosts whose pinned-tab URL key keeps the query string. Some apps use the query
 // string as the page's identity (e.g. localhost:6969/?focused=<chat id>, one
@@ -138,7 +139,7 @@ const Utils = {
             defaultSpaceName: 'Home',
             archiveAndClearEnabled: false,
             mergeDuplicateTabsEnabled: true,
-            mergeDuplicateTabsIdleMinutes: 120,
+            mergeDuplicateTabsIdleMinutes: DEFAULT_DUPLICATE_TAB_IDLE_MINUTES,
             autoArchiveEnabled: false, // Default: disabled
             autoArchiveIdleMinutes: 360, // Default: 6 hours
             syncTabGroups: false,
