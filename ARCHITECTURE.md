@@ -13,7 +13,7 @@ FaterSide 是 Sidecove 的自用 fork。用户操作 Chrome 原生侧栏中的�
 | `src/shared/space-store.js`、`space-client.js` | 前者在后台串行维护 Space；后者由其他上下文发送 `spaceStore` 消息。 |
 | `src/options.html`、`src/options/options.js` | 设置界面及保存；`src/shared/utils.js` 的 `getSettings()` 提供默认值。 |
 | `src/shared/` | 多上下文共用的数据、纯逻辑和样式。`styles.css` 同时供侧栏和设置页使用；共享模块不要在导入时访问 DOM。 |
-| `src/onboarding/`、`src/offscreen/` | 安装引导与练习页；offscreen 文档负责复制链接。 |
+| `src/onboarding/`、`src/offscreen/` | 由设置页手动打开的引导与练习页；offscreen 文档负责复制链接。 |
 | `vite.config.js`、`public/` | 多入口构建到固定目录 `dist/`；静态资源从 `public/` 复制。 |
 
 侧栏、设置页、Service Worker 是不同的扩展上下文。`shared/` 不依赖具体上下文，侧栏和后台各自依赖 `shared/`。需要确认具体实现时直接从表中的入口追踪，不要假设所有 Chrome API 操作都通过后台。

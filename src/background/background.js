@@ -51,7 +51,6 @@ import { Logger } from '../shared/logger.js';
 import { copyCurrentTabUrlWithFallback } from './url-copy.js';
 import { parseSpaceCommand, switchSpaceWithoutSidebar } from '../shared/space-navigation.js';
 import { registerAutoArchive, TAB_ACTIVITY_STORAGE_KEY } from './auto-archive.js';
-import { openOnboardingIfDue } from './onboarding-lifecycle.js';
 import { RECENT_TAB_COMMAND, registerRecentTab } from './recent-tab.js';
 import { registerCloseEmptyNewTab } from './close-empty-new-tab.js';
 import { registerPendingClean } from './pending-clean.js';
@@ -87,9 +86,6 @@ chrome.sidePanel
         openPanelOnActionClick: true
     })
     .catch(error => Logger.error(error));
-
-// Listen for extension installation
-chrome.runtime.onInstalled.addListener(openOnboardingIfDue);
 
 // Listen for messages from the content script (sidebar)
 // Do not return a Promise for unrelated messages: it can win the response race

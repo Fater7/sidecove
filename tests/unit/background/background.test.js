@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { openOnboardingIfDue } from '../../../src/background/onboarding-lifecycle.js';
 
 // The whole service worker, loaded once with a stub chrome, for the listeners it registers.
 // The import is cached, so the worker loads once for this file.
 const loaded = (async () => {
-    const messages = [],
-        installed = [];
+    const messages = [];
+    const installed = [];
+    const openedTabs = [];
     const event = { addListener() {} };
     const area = data => ({
         async get(keys) {
@@ -54,7 +54,10 @@ const loaded = (async () => {
             onDetached: event,
             query: async () => [],
             get: async () => undefined,
-            create: async () => ({})
+            create: async tab => {
+                openedTabs.push(tab);
+                return {};
+            }
         },
         tabGroups: { onRemoved: event, onUpdated: event, query: async () => [] },
         windows: { onFocusChanged: event, onRemoved: event, get: async id => ({ id, focused: true }) },
@@ -72,7 +75,7 @@ const loaded = (async () => {
         }
     };
     await import('../../../src/background/background.js');
-    return { messages, installed };
+    return { messages, installed, openedTabs };
 })();
 
 test('space-store replies are not intercepted by unrelated Promise listeners', async () => {
@@ -92,7 +95,11 @@ test('space-store replies are not intercepted by unrelated Promise listeners', a
     assert.equal(replies[0].spaces[0].id, 'home');
 });
 
-test('the service worker opens the onboarding check when Chrome installs or updates it', async () => {
-    const app = await loaded;
-    assert.ok(app.installed.includes(openOnboardingIfDue));
+test('installing or updating the extension does not open a tab', async () => {
+    const { installed, openedTabs } = await loaded;
+    for (const reason of ['install', 'update']) {
+        await Promise.all(installed.map(listener => listener({ reason })));
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(openedTabs, [], reason);
+    }
 });

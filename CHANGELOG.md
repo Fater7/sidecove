@@ -8,6 +8,7 @@
 
 - **Folder renaming.** Rename folders from their right-click menu; double-clicking no longer opens the name editor.
 - **Duplicate tabs.** Automatic merging checks for exact-address duplicates in the same window and space every 10 minutes. It is on by default with a configurable idle time of 10 minutes.
+- **Interactive guide.** Find the guide in Settings. Installation, updates and reloads no longer open a guide tab.
 - **Archive and Clear.** Both controls and automatic archiving are off by default and can be enabled together in Settings.
 - **Trackpad space switching.** A long swipe and its momentum now switch spaces only once.
 - **Folder context menus.** Right-clicking a tab inside a folder opens only the tab menu.
